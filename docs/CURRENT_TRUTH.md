@@ -1,6 +1,6 @@
 # Current Truth — Connect Four
 
-**Current state.** One page. Everything here is measured, and
+**As of 2026-10-28, late night.** One page. Everything here is measured, and
 every number names its artifact. Where the long handover
 (`CONNECT_FOUR_HANDOVER.md`) disagrees, **this page wins** — the handover is
 working history and contains later-retracted claims.
@@ -20,7 +20,7 @@ working history and contains later-retracted claims.
 
 | | |
 |---|---|
-| **Is there a working model?** | Yes. GF-trunk Connect Four agent, CPU-only hard export, playable at `http://127.0.0.1/`. |
+| **Is there a working model?** | Yes. GF-trunk Connect Four agent, CPU-only hard export, playable at `http://127.0.0.1:7860/`. |
 | **Is it release-ready?** | **No** -- but the blocker is now understood and it is **not** the architecture. |
 | **Is it better than always playing c4?** | **Not yet.** The corrected arm beats every single-column constant against minimax and centre, but loses to the centre-first priority sweep on random and lookahead. |
 | **Was V24 launched?** | **No.** V24 is now defined as a **properly-budgeted** full run (§5q). |
@@ -114,7 +114,7 @@ on the full holdout it plays c1 13.0 % / c2 8.3 %. **Any column claim must
 name its population.** 940 of 1,500 requested positions remained unproved
 and were excluded, not scored.
 
-### 3d. An audit-script defect found  (fixed; no effect on the model)
+### 3d. An audit-script defect found 2026-10-28 (fixed; no effect on the model)
 The representative-subset audit initially reported the model at **65.36 %**
 in-optimal with a *different* per-column histogram than the authoritative
 evaluator — on the **same 560 positions, same checkpoint**. Cause: it took a
@@ -135,7 +135,7 @@ identical to the D16 table. Fixed in `tmp/audit_col_representative.py`
 competence number must use the same masked protocol as `Agent.choose`.
 Artifact: `runs/_probe/mask_reconciliation.json`.
 
-### 3e. The column asymmetry is **depth-dependent** (new,)
+### 3e. The column asymmetry is **depth-dependent** (new, 2026-10-28)
 The depth-stratified breakdown of the corrected representative audit shows
 the model's in-optimal rate falls as the position gets deeper, while the
 teacher's stays flat:
@@ -158,7 +158,7 @@ Artifact: `runs/_probe/col_representative.json`
 
 ## 4. The raw Pons data is correctly decoded — and it is the best target source
 
-This is new  and it settles a long-running question.
+This is new (2026-10-28) and it settles a long-running question.
 
 A systematic **12-convention orientation grid** (row flip × column flip ×
 player mapping `none`/`parity`/`swap`, 400 exact-solved rows) selected:
@@ -227,7 +227,7 @@ Artifact: `runs/_probe/ladder_enabled_check.json`
 
 ---
 
-## 5b. NEW: in-game, the shipped model LOSES to a constant column
+## 5b. NEW (2026-10-28): in-game, the shipped model LOSES to a constant column
 
 Everything in §2 is **off-policy** — it measures the model on *held-out
 positions*. It does not measure what the model does when the board evolves
@@ -266,7 +266,7 @@ c0+c1+c2 take **29.9 %** of its moves.
 Artifacts: `runs/_probe/ingame_cols_fd_a.json`,
 `runs/_probe/ingame_strength_fd_a.json`.
 
-### 5b-1. NEW: the constant arms were NOT constant — and the
+### 5b-1. NEW (2026-10-28): the constant arms were NOT constant — and the
 ### corrected result is *worse* for the model, not better
 
 The "always-cX" arms above were written as:
@@ -341,7 +341,7 @@ Artifacts: `runs/_probe/constant_vs_priority.json`,
 
 ---
 
-## 5c. NEW (late): **ROOT CAUSE FOUND** — the per-ply sidecar was indexed by batch position, not corpus row
+## 5c. NEW (2026-10-28, late): **ROOT CAUSE FOUND** — the per-ply sidecar was indexed by batch position, not corpus row
 
 This is the defect that explains every "the model fits the played move but
 not the teacher label" measurement in this project. It was found by reading
@@ -353,12 +353,12 @@ In `src/c4/train.py`, the per-ply supervision branch built the sidecar row
 index as:
 
 ```python
-b_idx = torch.arange(keep.numel, device=device) // (y.shape[1] + 1)
-rows = b_idx[hit].cpu
+b_idx = torch.arange(keep.numel(), device=device) // (y.shape[1] + 1)
+rows = b_idx[hit].cpu()
 tgt = _pt[rows, s_idx].to(device)
 ```
 
-`arange(keep.numel) // (width + 1)` yields **0 … B−1** — the **batch
+`arange(keep.numel()) // (width + 1)` yields **0 … B−1** — the **batch
 index**, not the corpus row the window was sampled from. The single-label
 path next to it (`_soft_rows_for_batch`) returns `chosen[k]` and was always
 correct; only the per-ply path was wrong.
@@ -438,7 +438,7 @@ trusted until a model is retrained on correctly-indexed supervision.
 
 ---
 
-## 5d. NEW: the checkpoint **promotion gate** was promoting the checkpoint that fits the labels *least*
+## 5d. NEW (2026-10-28): the checkpoint **promotion gate** was promoting the checkpoint that fits the labels *least*
 
 The 500-row acceptance run passes the supervision gate at **91.29 %**
 direct sidecar-label agreement — but it promoted the *wrong* checkpoint:
@@ -518,7 +518,7 @@ with the independently measured 21.33 %).
 1. *The zeroed-export trap.* The first hard-path implementation returned an
    identical **12.68 %** for every checkpoint. Cause:
    `GFMarkovLM_V6` has no `import_hard`, so a V6 checkpoint re-loaded
-   through `_load_agent` keeps **zero float parameters**; `export_hard` on
+   through `_load_agent` keeps **zero float parameters**; `export_hard()` on
    that model produces an all-zero model whose every logit is `0.0` and
    whose argmax is always column 0 — a constant, useless policy. The
    **saved** hard payload is fine; only the float re-export was broken.
@@ -549,7 +549,7 @@ per-ply supervision plumbing was.
 
 ---
 
-## 5f. NEW (late): the seat gap is a GAME PROPERTY, and the
+## 5f. NEW (2026-10-28, late): the seat gap is a GAME PROPERTY, and the
 ##     "learning problem" verdict was measured on a defective checkpoint
 
 ### 5f.1 Seat gap -- resolved with matched controls
@@ -604,7 +604,7 @@ model pick optimal, unique opt   24.1 %               26.8 %
 model pick optimal, tied opt     87.7 %               90.0 %
 model plays c1 (of 84 legal)      0 / 84               0 / 84
 model plays c2 (of 74 legal)      0 / 74              24 / 74
-model column histogram        {,,,6:7}  {0:2,,,,,}
+model column histogram        {3:16,4:54,5:35,6:7}  {0:2,2:24,3:37,4:27,5:10,6:12}
 ```
 
 The corrected arm is **much better distributed** across columns -- it
@@ -659,11 +659,11 @@ abundant, well-distributed c1 supervision. Data coverage is refuted.
 `tmp/audit_c1_path_probe.py` on 200 exact-solved holdout positions:
 
 ```text
-c1 wins argmax UNMASKED: 7/200 = 3.5 %
-c1 wins argmax MASKED: 5/200 = 2.5 %
-c1 logit identical to another legal column: never
-mean rank of c1 among legal columns: 4.36 / 7
-mean logit spread across legal columns: 1.693
+c1 wins argmax UNMASKED : 7/200 = 3.5 %
+c1 wins argmax MASKED   : 5/200 = 2.5 %
+c1 logit identical to another legal column : never
+mean rank of c1 among legal columns : 4.36 / 7
+mean logit spread across legal columns : 1.693
 ```
 
 **Step 3 -- is the network even reading c1? YES.**
@@ -831,10 +831,10 @@ once the preferred column fills.
 | opponent | MODEL win% | best constant | best const win% | Fisher p | outcome |
 |---|---|---|---|---|---|
 | random (eps 0) | **81.1 %** | centre_policy | 91.3 % | 2.6e-15 | **model loses** |
-| heuristic (eps.3) | 27.8 % | always-c1 | 25.6 % | 0.132 | no difference |
-| lookahead (eps.3) | 11.3 % | centre_policy | 16.7 % | 3.8e-06 | **model loses** |
-| minimax (eps.3) | **39.7 %** | centre_policy | 37.0 % | 0.064 | no difference (marginally) |
-| centre (eps.3) | **81.8 %** | always-c1 | 77.2 % | 7.0e-04 | **model wins** |
+| heuristic (eps .3) | 27.8 % | always-c1 | 25.6 % | 0.132 | no difference |
+| lookahead (eps .3) | 11.3 % | centre_policy | 16.7 % | 3.8e-06 | **model loses** |
+| minimax (eps .3) | **39.7 %** | centre_policy | 37.0 % | 0.064 | no difference (marginally) |
+| centre (eps .3) | **81.8 %** | always-c1 | 77.2 % | 7.0e-04 | **model wins** |
 
 Full per-arm Fisher matrix (model vs each constant arm) is in
 `runs/_probe/ingame_strength_fx_a_final.json`.
@@ -844,7 +844,7 @@ Full per-arm Fisher matrix (model vs each constant arm) is in
 1. Against *random*, the corrected model wins 81.1 % -- far above every
    single-column arm (74.6-82.9 %) -- but loses decisively to
    `centre_policy` (91.3 %). `centre_policy` is NOT a constant column: it
-   is a **centre-first priority sweep** (play c3, then c4, then c2,...),
+   is a **centre-first priority sweep** (play c3, then c4, then c2, ...),
    and it is the strongest single opponent measured.
 2. Against *heuristic*, the model is statistically indistinguishable from
    the best constant (27.8 % vs 25.6 %, p=0.13) and significantly beats
@@ -874,7 +874,7 @@ search-like behaviour.
 `COMPARABLE -- MODEL LOSES to best constant (p=0.0000)`, which conflates
 two independent questions (is the comparison valid? is the difference
 significant?) and reads as if "COMPARABLE" qualified the strength claim.
-Now prints `COMPARISON VALID -- significant difference -- MODEL LOSES...`.
+Now prints `COMPARISON VALID -- significant difference -- MODEL LOSES ...`.
 
 ### 5j. CORRECTED ARM -- THE LEARNING GAP SURVIVES THE FIX
 
@@ -884,14 +884,14 @@ Now prints `COMPARISON VALID -- significant difference -- MODEL LOSES...`.
 
 ```text
 UNIQUE-optimum positions (n=112)
-  label EXACTLY equals the unique optimum: 97/112  = 86.6 %
-  model pick is optimal: 30/112  = 26.8 %
-  label OK   & model WRONG: 70/97   <-- learning gap
-  label WRONG & model WRONG: 12/15
+  label EXACTLY equals the unique optimum : 97/112  = 86.6 %
+  model pick is optimal                    : 30/112  = 26.8 %
+  label OK   & model WRONG                 : 70/97   <-- learning gap
+  label WRONG & model WRONG                : 12/15
 
 TIED-optimum positions (n=448)
-  label INTERSECTS optimum: 433/448 = 96.7 %
-  model pick is optimal: 403/448 = 90.0 %
+  label INTERSECTS optimum                 : 433/448 = 96.7 %
+  model pick is optimal                    : 403/448 = 90.0 %
 ```
 
 This is the same shape as the defective fd_a audit (72/97), so **fixing
@@ -901,10 +901,10 @@ model still misses it 73 % of the time. The bottleneck is now squarely
 the model's ranking, not the labels.
 
 ```text
-positions whose UNIQUE optimum is c1 or c2: 23
-  label names c1/c2: 18
-  model plays c1/c2:  8
-  model in optimum:  5
+positions whose UNIQUE optimum is c1 or c2 : 23
+  label names c1/c2                        : 18
+  model plays c1/c2                        :  8
+  model in optimum                         :  5
 
 model column histogram on the 112 unique-optimum positions:
   {0: 2, 1: 0, 2: 24, 3: 37, 4: 27, 5: 10, 6: 12}
@@ -931,8 +931,8 @@ the gap-versus-gap verdict) wrote `runs/_probe/seat_gap_v2.log` and
 `runs/_probe/seat_gap_discriminator.json`.
 
 **The authoritative seat-gap result is the corrected one** (`seat_gap_v2.log`
-/ `seat_gap_discriminator.json`, both mtime, verified to contain
-G4 and `p_gap`). The older `seat_gap.log` (mtime) is superseded
+/ `seat_gap_discriminator.json`, both mtime 16:15:13, verified to contain
+G4 and `p_gap`). The older `seat_gap.log` (mtime 16:00:50) is superseded
 and its "INCONCLUSIVE" verdict must not be quoted.
 
 ### 5l. fx_a STRENGTH MATRIX INDEPENDENTLY REPRODUCED
@@ -962,7 +962,7 @@ has a byte-exact reproduction.
 
 Three separate transient failures in this phase were all traced to ONE
 cause: **two concurrent `tmp/post_train_eval.sh` chains**, one stale from
- and one started at, both writing `runs/_probe/post_train_eval.log`
+17:17 and one started at 19:57, both writing `runs/_probe/post_train_eval.log`
 and both running the generic `tmp/measure_label_agreement.py` full-corpus
 scan (841 MB resident, scanning 320,000 rows). They competed with the
 serial regression sweep for CPU and shared the one live UI server.
@@ -996,7 +996,7 @@ concurrently with the sweep.
 ### 5n. fx_a FULL STRENGTH MATRIX (authoritative, from the clean serial repro)
 
 Extracted from `runs/_probe/ingame_strength_fx_a_repro.log`
-(mtime, postdates the harness script at). 600 games x
+(mtime 19:44:31, postdates the harness script at 18:46:52). 600 games x
 3 seeds (99/1234/4242) per arm = 1800 games per cell. Model greedy
 (eps=0), shipped hard path, global RNG seeded.
 
@@ -1037,9 +1037,9 @@ bad path now exits 1, the correct run-dir usage still reports
 ### 5p. STALE-SCRIPT FAILURES IN THIS BATCH
 
 `proc_fcb546d0f1ab` (`audit_c1_blindspot.py`) failed with
-`FileNotFoundError:.../perply_v23_full/corpus.txt`. The script on disk
-points at `corpus_320k_fixed.txt` (mtime) and its artifact
-`c1_blindspot.json` was written at. The failing run used a
+`FileNotFoundError: .../perply_v23_full/corpus.txt`. The script on disk
+points at `corpus_320k_fixed.txt` (mtime 16:22:24) and its artifact
+`c1_blindspot.json` was written at 16:22:53. The failing run used a
 STALE copy of the script that still referenced `corpus.txt`. Re-running
 the current script reproduces the identical numbers
 (c1 = 14.13 % of played moves, 13.48 % of label mass, 13.16 % of
@@ -1058,7 +1058,7 @@ missed by every earlier read.
 **The corrected full arms saw the 320,000-row corpus only 0.30 times.**
 
 ```text
-acceptance run  overfit_fixed: 3923 steps x batch 16 =  62,768 samples
+acceptance run  overfit_fixed : 3923 steps x batch 16 =  62,768 samples
                                  over 500 rows        = 125.5 EPOCHS
                                  -> LABEL 91.29 % (scorer 92.38 %)
 
@@ -1143,7 +1143,7 @@ nothing to resume: the checkpoint is already at step 6000, which is beyond
 drop --resume to start fresh.
 ```
 
-The resume source is `final_float.pt` (it carries `{"state":...}` plus
+The resume source is `final_float.pt` (it carries `{"state": ...}` plus
 `meta.step`, `meta.transcript` and `meta.lags`); `best_hard.pt` is an
 integer export and cannot be resumed from, though the trainer still
 accepts it as a fallback where the model supports `import_hard`.
@@ -1192,7 +1192,7 @@ end-to-end rather than by reading it:
    a `mkdir`-based one-writer lock in `tmp/post_train_eval.sh`
    (`.post_train_eval.lock`) and a second one in `tmp/wait_and_eval.sh`
    (`.wait_and_eval.lock`). Both verified: a second chain now exits 1
-   with `ABORT: another... chain holds...` and the lock is released on
+   with `ABORT: another ... chain holds ...` and the lock is released on
    normal exit.
 
 3. **The generic scanner overwrote one shared JSON.**
@@ -1233,14 +1233,14 @@ The corrected reference uses a **random** legal fallback, and the script now
 seeds the global RNG before every duel because `duel` ignores its own seed.
 
 **Stale-artifact check.** The 600-game table `ingame_strength_fd_a.json`
-was written at  while `tmp/audit_ingame_strength_fd_a.py` was fixed at
- -- the JSON predates the fix and carries the defect. Artifact
+was written at 11:21 while `tmp/audit_ingame_strength_fd_a.py` was fixed at
+14:52 -- the JSON predates the fix and carries the defect. Artifact
 mtimes must be checked against script mtimes before citing a measurement.
 Both were re-measured: `ingame_cols_fd_a_v2.json` and
 `ingame_cols_fx_a_v2.json`.
 
 
-## 5e. CORRECTED (late): the model does **NOT** absorb tie sets —
+## 5e. CORRECTED (2026-10-28, late): the model does **NOT** absorb tie sets —
 ##     an earlier version of this section claimed the opposite and was wrong
 
 **Retraction.** An earlier draft of this section concluded from the raw
@@ -1313,7 +1313,7 @@ the audit, not in the shipped code):
    nonsense heights such as 81 — which is exactly the
    `ValueError: bad decoded height 81` that killed the first run.
 
-## 5f. NEW (late): the strength harness has **no** seat bias —
+## 5f. NEW (2026-10-28, late): the strength harness has **no** seat bias —
 ##     and the 20 pp "seat gap" was sampling noise
 
 `tmp/audit_strength_harness_control.py` reported two FAILs. **Both were
@@ -1354,7 +1354,7 @@ unique games)" for exactly this reason.
 
 ### 5r. THE V24 PRE-FLIGHT: what changed, what was measured, what is still open
 
-**Snapshot:** before the midnight V24 launch.
+**Date:** 2026-10-28 evening, before the midnight V24 launch.
 
 #### 5r.1 The step rate was wrong by a factor of two
 
@@ -1543,27 +1543,27 @@ running the real code, not by reading it.
 
 ### 5s.1 `play_v24.sh` wrote invalid JSON
 
-`write_status` interpolated the training step bare:
+`write_status()` interpolated the training step bare:
 
 ```text
 "step": $last_step,
 ```
 
 `last_step` is EMPTY until the server reports a step, so the file
-contained `"step":,` -- **not valid JSON**. Every consumer of the status
+contained `"step": ,` -- **not valid JSON**. Every consumer of the status
 file failed to parse it, including the watcher's own regression test.
 The step is now `null` until known, and the free-text `detail` field is
 escaped (`\` and `"`) before it is interpolated into the JSON string.
 
 ### 5s.2 `curl -o /dev/null` returns exit code 23 on this host
 
-Three readiness checks used `curl -s -o /dev/null...`. On this Windows
+Three readiness checks used `curl -s -o /dev/null ...`. On this Windows
 build that returns **rc=23 on a successful HTTP 200**:
 
 ```text
-curl -s -o /dev/null.../state   -> rc=23   (HTTP 200, 1282-byte body)
-curl -s -o -.../state     -> rc=0
-curl -s -o <file>.../state     -> rc=0
+curl -s -o /dev/null .../state   -> rc=23   (HTTP 200, 1282-byte body)
+curl -s -o -       .../state     -> rc=0
+curl -s -o <file>  .../state     -> rc=0
 ```
 
 The watcher would have waited the full 90 s, declared a healthy server
@@ -1577,7 +1577,7 @@ dead, and exited 4. It now checks the **HTTP status code** via
 
 The watcher reads the served step from `/modelinfo`, but that endpoint
 returned only the path, name, device, mtime, size and hash. The step
-came back empty, which is what made `"step":,` reachable in the first
+came back empty, which is what made `"step": ,` reachable in the first
 place. `/modelinfo` now carries `"step"`, read from the checkpoint
 payload (the promoted artifact is `best_hard.pt` and carries no step in
 its filename).
@@ -1671,7 +1671,7 @@ Windows that does **not** mean "reuse a TIME_WAIT address" the way it does
 on Linux — it lets a **second live socket bind an address that another live
 socket already holds**. A `ui_server` from an earlier session therefore
 kept running while a freshly started one printed
-`serving http://127.0.0.1/`. Requests went to the OLD process, so
+`serving http://127.0.0.1:7860/`. Requests went to the OLD process, so
 `/modelinfo` lacked the `step` field the current code returns, and the
 parity tests failed at random.
 
@@ -1715,8 +1715,8 @@ stale `.venv-c4` processes running:
 ```text
 pid 60265  measure_label_agreement.py  (full-corpus scan, OOM-prone)
 pid 78212  ui_server --model runs/_probe/_wtest4/...   (stale)
-pid 93930  ui_server --model.../fd_a_s6000/...        (stale)
-pid 95822  ui_server --model.../fd_a_s6000/...        (stale)
+pid 93930  ui_server --model .../fd_a_s6000/...        (stale)
+pid 95822  ui_server --model .../fd_a_s6000/...        (stale)
 ```
 
 Any one of them is enough to push a 20 s client timeout over the edge.
@@ -1779,7 +1779,7 @@ five hours. Clean the process table, then re-measure.
 ## 9. Play it
 
 ```text
-http://127.0.0.1/
+http://127.0.0.1:7860/
 model: runs/_probe/fd_a_s6000/checkpoints/step6000_hard.pt
 ```
 
@@ -1872,7 +1872,7 @@ suite. Measured cost: **1107 CPU-seconds** and **1.2 GB RSS** of
 accumulated contention.
 
 Root cause: `tmp/test_play_v24_watcher.py` cleaned up with
-`watcher.terminate` plus a PowerShell sweep that matched only
+`watcher.terminate()` plus a PowerShell sweep that matched only
 `*ui_server*`. On Windows, terminating an MSYS bash does not reliably run
 the script's EXIT trap, so the **watcher bash itself survived every run**.
 Each test case leaked one bash + one python server.
@@ -1889,7 +1889,7 @@ random: extra processes stealing CPU from a measurement.
    grow across a run.
 2. `tmp/cleanup_leaked_watchers.py` (new) reclaims already-leaked
    watchers. It protects the live chain by **socket ownership**, not by
-   environment variables: `psutil.Process.environ` returns `None` for
+   environment variables: `psutil.Process.environ()` returns `None` for
    `V24_TAG` on these Windows bash processes, and a naive cmdline grep
    even matches the cleanup script's own command line. So it finds the
    process listening on the live port, protects its full ancestry, and
@@ -1903,7 +1903,7 @@ UI server confirmed alive afterwards, CPU at 7 % and GPU at 99 %.
 process tree. Terminating a shell is not the same as stopping the thing
 it started.
 
-### 5u. V24 IS RUNNING 
+### 5u. V24 IS RUNNING (launched 2026-10-29 02:34)
 
 **Status: launched.** The convergence run is live and detached.
 
@@ -1912,7 +1912,7 @@ run dir:        runs/_probe/v24/
 trainer log:    runs/_probe/v24.log
 chain log:      runs/_probe/v24_chain.log
 watcher log:    runs/_probe/v24_play.log
-UI:             http://127.0.0.1/   (hot-reloads as the trainer promotes)
+UI:             http://127.0.0.1:7860/   (hot-reloads as the trainer promotes)
 config:         100,000 steps = 5.00 epoch-equivalents
                 batch 16, ctx 192, seed 32, transcript v2, dense lags
                 --max-legacy-frac 0 --table-bias 0.0 --hard-start 0
@@ -1930,20 +1930,20 @@ step  2000 | HOLDOUT 29.0% | LABEL 40.2% | H-LABEL 27.9% | t 883s
 
 The step-2000 LABEL of **40.2 %** matches the earlier projection of
 **40.23 %** exactly, and the board-gate fired correctly at step 0
-("exported model is BOARD-BLIND... refusing to promote").
+("exported model is BOARD-BLIND ... refusing to promote").
 
 **The rate changed, and the reason matters.** The plan assumed
 0.650 s/step (18.1 h). The measured rate on the *contended* machine was
-**0.4415 s/step** -> **12.3 h**, finishing around ****. The run got
+**0.4415 s/step** -> **12.3 h**, finishing around **14:50**. The run got
 FASTER after the cleanup, because the earlier 0.646 s/step figure was
 measured while 24 leaked watcher processes were stealing CPU. Both
 numbers are honest; the second one is the real one for a clean machine.
 Do not quote 18.1 h for this run.
 
-**Why it was launched now rather than at.** The standing goal was
+**Why it was launched now rather than at 00:00.** The standing goal was
 an "around-midnight" launch. The run was originally blocked on the
-regression gate, which only went green at ~ (24 PASS / 0 FAIL after
-the lock and retry hardening). Launching at  is inside the window
+regression gate, which only went green at ~02:20 (24 PASS / 0 FAIL after
+the lock and retry hardening). Launching at 02:34 is inside the window
 and, more importantly, after the gate -- a midnight launch would have
 shipped an unvalidated chain.
 
@@ -2013,27 +2013,27 @@ resource.
 needs ~0.4 GB more. Do not run the full regression sweep repeatedly
 during the run — each sweep is fine, but do not leave scratch behind.
 
-### 5w. Host sleep during the V24 run — what actually happened 
+### 5w. Host sleep during the V24 run — what actually happened (2026-10-29)
 
 The host went to sleep mid-run. The run survived, but the timeline needs
 recording because it looks alarming and is not.
 
 ```text
-  step 18000 logged        (LABEL 59.5%, HOLDOUT 35.7%)
-  Windows Kernel-Power id 42   <- machine entered sleep
-  Kernel-Power id 107          <- resumed (6 s later)
-  Power-Troubleshooter id 1    <- final wake
-     live step counter = 19439
+04:41:25  step 18000 logged        (LABEL 59.5%, HOLDOUT 35.7%)
+04:47:10  Windows Kernel-Power id 42   <- machine entered sleep
+04:47:16  Kernel-Power id 107          <- resumed (6 s later)
+05:58:14  Power-Troubleshooter id 1    <- final wake
+06:01     live step counter = 19439
 ```
 
 **The machine was asleep for roughly 71 minutes**, not 6 seconds. The
 Kernel-Power pair (42 then 107) records the *transition request*; the
-Power-Troubleshooter event at **** records the actual wake.
+Power-Troubleshooter event at **05:58:14** records the actual wake.
 Trusting 42/107 alone would have wrongly concluded a 6-second nap.
 
 **Nothing was lost or corrupted.** Verified after the wake:
 
-- trainer process alive (worker pid 42856, started), GPU 95 %,
+- trainer process alive (worker pid 42856, started 02:33:43), GPU 95 %,
   409 W, actively in the training loop (py-spy: `build_batch` /
   `_weighted_move_loss`);
 - all 8 checkpoints in `runs/_probe/v24/checkpoints/` load cleanly, with
@@ -2044,8 +2044,8 @@ Trusting 42/107 alone would have wrongly concluded a 6-second nap.
 - `.v24.lock` still held by the original chain.
 
 **Why the log looked stalled.** Log lines are written only every
-`--eval-every 2000` steps. Between step 18000  and step 20000
- there was an 85-minute wall-clock gap for a cycle that normally
+`--eval-every 2000` steps. Between step 18000 (04:41) and step 20000
+(06:06) there was an 85-minute wall-clock gap for a cycle that normally
 takes ~14 minutes. The extra time was the sleep, not a slow trainer:
 
 ```text
@@ -2055,7 +2055,7 @@ instantaneous rate measured with py-spy = 0.395-0.822 s/step (normal)
 
 The `t 12768s` in the step-20000 line is **wall-clock**, so it jumped
 from 7659 s to 12768 s across the sleep. That is expected: the trainer
-uses `time.time`, and it measures real elapsed time, not CPU time.
+uses `time.time()`, and it measures real elapsed time, not CPU time.
 
 **Consequence for the ETA.** The wall-clock-based ETA is now pessimistic
 by exactly the sleep duration (~71 min). At the clean-machine rate of
@@ -2079,7 +2079,7 @@ make it dangerous.
 - The watchdog must distinguish "log is old because the host slept" from
   "log is old because the trainer died".
 
-### 5x. The promotion scorer can score a pinned checkpoint file 
+### 5x. The promotion scorer can score a pinned checkpoint file (2026-10-29)
 
 ### The problem
 

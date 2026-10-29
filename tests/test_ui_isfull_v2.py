@@ -6,7 +6,7 @@ as a DRAW after 6 plies with 36 cells empty. Now it must stay ONGOING,
 keep offering legal moves, and only end as a DRAW when the board is
 genuinely full.
 
-PREMISE FIX
+PREMISE FIX (2026-10-28)
 ------------------------
 The previous version of this test drove the human to play column 7 four
 times in a row and asserted the game stayed ongoing. That premise is
@@ -29,7 +29,7 @@ import sys
 import urllib.error
 import urllib.request
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.60"
+BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:7860"
 FAILS: list[str] = []
 
 

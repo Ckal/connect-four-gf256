@@ -1,6 +1,6 @@
 # Connect Four — Handover
 
-> **🔴 ROOT CAUSE FOUND (late night).** The per-ply supervision
+> **🔴 ROOT CAUSE FOUND (2026-10-28, late night).** The per-ply supervision
 > was indexed by **batch position instead of corpus row**. Every trained arm
 > (`fd_a`/`fd_b`/`fd_c`) learned the teacher answers of **16 of 320,000**
 > sidecar rows, and **41 %** of the supervision silently degenerated into
@@ -9,7 +9,7 @@
 > conclusion in this document is provisional until re-measured.**
 > Full detail: Appendix D20 and `docs/CURRENT_TRUTH.md` §5c.
 >
-> **⚠️ STATUS SUPERSEDED (late).** The line that used to read
+> **⚠️ STATUS SUPERSEDED (2026-10-28, late).** The line that used to read
 > *"the centre-only defect is FIXED … `mir_a_s6000` is the leading candidate"*
 > was **wrong** and is retracted. No arm passes the release gates.
 > `fd_a_s6000` (75.0 %) does **not** beat `always-c4` (75.7 %) on the
@@ -24,7 +24,7 @@
 >
 > Retraction details: Appendix D18.
 
-> **ADDENDUM (WIDE SOLVER — 560 POSITIONS).**
+> **ADDENDUM 2026-10-27 21:25 (WIDE SOLVER — 560 POSITIONS).**
 >
 > The corrected `--max-empty 24` solver run completed: **560 / 1,500 = 37.3%**
 > of the holdout is now solver-proven (up from 166 = 11.1%). 940 positions
@@ -54,7 +54,7 @@
 > the whole board. Mirror augmentation is a **targeted** improvement that
 > **trades against** whole-board centre calibration. Still **NO V24**.
 
-> **ADDENDUM (CORRECTION + FULL BATCH).**
+> **ADDENDUM 2026-10-27 21:15 (CORRECTION + FULL BATCH).**
 >
 > **A number I reported earlier was from the wrong population.** The `c3%`
 > column in the first version of the matched table came from the
@@ -93,7 +93,7 @@
 >
 > Still **NO V24**.
 
-> **ADDENDUM (CONTROLLED MATCHED A/B — DECISIVE).**
+> **ADDENDUM 2026-10-27 20:35 (CONTROLLED MATCHED A/B — DECISIVE).**
 >
 > The mirror-augmentation question is now answered by a **confound-free**
 > experiment. The earlier `mir_a_tau0` result was confounded: the trainer
@@ -130,7 +130,7 @@
 >
 > Still **NO V24** — awaiting the release decision.
 
-> **ADDENDUM (section 0h — ROOT CAUSE ISOLATED).** The
+> **ADDENDUM 2026-10-27 (section 0h — ROOT CAUSE ISOLATED).** The
 > remaining "always plays the centre" defect is **not** an architecture
 > limitation. A **canonical-board-disjoint** linear probe on layer2
 > reaches **31.42 %** validation versus **23.34 %** for ALWAYS-c3, so
@@ -138,12 +138,12 @@
 > **learned readout and its training objective**, and the decisive
 > measurements are in **`docs/CONNECT_FOUR_SECTION_0H.md`**.
 >
-> Also resolved: the long-standing **1250 / 1367 / 1500**
+> Also resolved 2026-10-27: the long-standing **1250 / 1367 / 1500**
 > c3-count discrepancy was **never a model bug** — it was an unmasked
 > `argmax` in the decomposition script plus one number that belonged to
 > a *different arm*. See section 0h §6.
 
-> **ADDENDUM (evening).** Three things changed after this
+> **ADDENDUM 2026-10-26 (evening).** Three things changed after this
 > document was written and they change the plan. See **section 0d**:
 > 1. the "saved hard export is corrupt" finding was a **loader bug**, not
 >    trainer corruption;
@@ -152,7 +152,7 @@
 > 3. there is now a **position-disjoint holdout**, which the old
 >    evaluation did not have.
 >
-> **ADDENDUM (night).** A fourth and deeper bug was found
+> **ADDENDUM 2026-10-26 (night).** A fourth and deeper bug was found
 > and fixed. See **sections 0e.2–0e.5**:
 > 1. the exported integer **tables were frozen at initialisation** — the
 >    argmax never moved at any checkpoint, the table gradient was
@@ -167,8 +167,8 @@
 > teacher/objective problem (centre collapse + mirror asymmetry), not an
 > initialisation problem. **Do not launch V24.**
 
-**Snapshot:** night addendum
-Repo: the project checkout
+Date: 2026-10-26 (night addendum)
+Repo: `<repo>`
 Current run: `runs/_probe/tb00/` (3,000 steps, `--table-bias 0.0`, completed)
 Decisive evidence:
 - `runs/_probe/tbfix_final/disj_fix_hard.json` — fix arm, hard export,
@@ -182,7 +182,7 @@ Decisive evidence:
 
 ## 0. Executive summary — the one-paragraph answer
 
-> **REWRITTEN. The previous version of this section said
+> **REWRITTEN 26 October 2026. The previous version of this section said
 > "yes, we solved it" — that was wrong, and the measurement behind it was
 > broken. If the two disagree, this section wins.**
 
@@ -256,7 +256,7 @@ and let the user win** (`runs/_probe/ui_v22_game.json`).
    the entire opening. Sharded across 24 workers.
 3. Then retrain from a fresh seed and re-run the deterministic ladder.
 
-**ADDENDUM (night) — the V23 retrain is NOT the blocker.
+**ADDENDUM 2026-10-26 (night) — the V23 retrain is NOT the blocker.
 The real blocker was a fourth bug, now fixed.**
 
 The controlled teacher A/B (§0e) showed dense per-ply supervision *lost*
@@ -309,7 +309,7 @@ small.** See §3c.
 
 ---
 
-## 0b. ROOT CAUSE FOUND — the shipped export was never trained
+## 0b. ROOT CAUSE FOUND 2026-10-26 — the shipped export was never trained
 
 **This is the biggest finding of the project, and it invalidates part of
 §0 above.** The model was not merely weak. The artifact we were serving
@@ -332,7 +332,7 @@ Defaults: `--hard-start 12000 --hard-ramp 4000 --hard-w 0.5`.
 `run_v23.sh`, not any of the v9–v21 scripts. Every run therefore used
 12000, so the one-hot path was **untrained for the first 12,000 steps**.
 
-The artifact that ships is `export_hard` — the one-hot path. So for the
+The artifact that ships is `export_hard()` — the one-hot path. So for the
 first 12,000 steps of every run, the shipping artifact was an
 **untrained approximation** of a function that had learned something
 else. The board signal lived in the soft *mixture* and did not survive
@@ -346,14 +346,14 @@ cannot return exactly 0.
 
 | checkpoint | hard board-sensitivity | hard column distribution | reads board? |
 |---|---|---|---|
-| step 2000 | **0.0000** | c c | no |
-| step 10000 | **0.0000** | c0 | no |
-| step 11500 | **0.0000** | c0 | no |
-| **step 12000** (= `--hard-start`) | **0.7402** | c7 c0:3 | **yes** |
-| step 12500 | 0.7273 | c c | yes |
-| step 13000 | 0.7376 | c c | yes |
-| step 15000 | 0.7119 | c7 | yes |
-| step 19000 | 0.6935 | c c | yes |
+| step 2000 | **0.0000** | c2:64 c3:56 | no |
+| step 10000 | **0.0000** | c3:120 | no |
+| step 11500 | **0.0000** | c3:120 | no |
+| **step 12000** (= `--hard-start`) | **0.7402** | c3:117 c0:3 | **yes** |
+| step 12500 | 0.7273 | c3:89 c2:27 | yes |
+| step 13000 | 0.7376 | c3:64 c2:51 | yes |
+| step 15000 | 0.7119 | c3:117 | yes |
+| step 19000 | 0.6935 | c3:81 c4:33 | yes |
 
 The transition lands **exactly** on `--hard-start 12000`. The soft model
 read the board the whole time (soft board-sensitivity 0.26 → 0.90 across
@@ -440,7 +440,7 @@ non-empty for a hard checkpoint — **always check it**.
 
 ---
 
-## 0c. THE REAL ANSWER TO "IS IT THE DATA?"
+## 0c. THE REAL ANSWER TO "IS IT THE DATA?" — 2026-10-26
 
 §0b fixed the export. This section answers the question that followed:
 **if the model is trainable, is the training data the problem?**
@@ -479,7 +479,7 @@ VERDICT: FIXED
 Export-path parity (`tg_export_parity.py`) confirms all three integer
 paths are the same function: PyTorch `hard_forward` vs the pure-Python
 `GFCipher` in `src/generate.py` — max delta **0.000004**, argmax **100%**;
-`export_hard_with_meta` payload identical to `model.export_hard`.
+`export_hard_with_meta()` payload identical to `model.export_hard()`.
 
 ### The data is measurably good
 
@@ -520,7 +520,7 @@ winning column" at ~45-54%.** That is the rule being learned.
 `tg_log_metric_check.py` and `runs/_probe/_mass.py`:
 
 ```
-accuracy at the SUPERVISED slot: 29.1%
+accuracy at the SUPERVISED slot : 29.1%
 accuracy via the AGENT's own window: 29.1%
 
 probability mass the model puts on the 7 column bytes
@@ -649,8 +649,8 @@ always c3:  26.8%   <-- best constant
 ```
 n = 895 positions where the winning column is not 3
 
-wins-only: 514/895 = 57.4%   (always-centre would score 0.0%)
-V23: 354/895 = 39.6%   (always-centre would score 0.0%)
+wins-only  : 514/895 = 57.4%   (always-centre would score 0.0%)
+V23        : 354/895 = 39.6%   (always-centre would score 0.0%)
 
 VERDICT: READS THE BOARD (beats every constant policy, and wins
          off-centre too)
@@ -702,11 +702,11 @@ changes. Metric: held-out immediate-win positions, "picks a column that
 actually wins" (chance ~14%):
 
 ```
-  500 steps  (0.4 epochs): 40.0%
-1000 steps  (0.8 epochs): 47.2%
-2500 steps  (2.0 epochs): 53.2%   (10-epoch run)
-5000 steps  (4.0 epochs): 58.0%   (10-epoch run)
-2000 steps  (1.6 epochs): 54.2%   (earlier 1.6-epoch run, unbalanced)
+  500 steps  ( 0.4 epochs) : 40.0%
+ 1000 steps  ( 0.8 epochs) : 47.2%
+ 2500 steps  ( 2.0 epochs) : 53.2%   (10-epoch run)
+ 5000 steps  ( 4.0 epochs) : 58.0%   (10-epoch run)
+ 2000 steps  ( 1.6 epochs) : 54.2%   (earlier 1.6-epoch run, unbalanced)
 ```
 
 Still rising at 4 epochs. The model is **under-trained, not under-capable**.
@@ -714,9 +714,9 @@ Still rising at 4 epochs. The model is **under-trained, not under-capable**.
 **Train vs held-out (the memorisation test):**
 
 ```
-TRAIN   (rows the model saw): 217/357 = 60.8%
-HELDOUT (rows it never saw): 151/275 = 54.9%
-gap: 5.9 pp
+TRAIN   (rows the model saw) : 217/357 = 60.8%
+HELDOUT (rows it never saw)  : 151/275 = 54.9%
+gap                          : 5.9 pp
 VERDICT: GENERALISES (train ~= heldout) -- rule is learned
 ```
 
@@ -729,8 +729,8 @@ Controlled A/B, same data, same seed, same 1,000 steps, only `--other-w`
 changed:
 
 ```
-unbalanced (--other-w 0.1): 422/895 = 47.2%
-balanced   (--other-w 0.0): 420/895 = 46.9%
+unbalanced (--other-w 0.1) : 422/895 = 47.2%
+balanced   (--other-w 0.0) : 420/895 = 46.9%
 ```
 
 **0.3 percentage points — indistinguishable.** Even though 92.2% of the
@@ -778,12 +778,12 @@ part of the board**.
 
 ---
 
-## 0d. ADDENDUM (evening) — three corrections, one real fix
+## 0d. ADDENDUM 2026-10-26 (evening) — three corrections, one real fix
 
 ### 0d.1 The "saved hard export is corrupt" finding was a LOADER bug
 
 **What we thought we knew:** the wins-only `step12500_hard.pt` differed
-materially from a live `export_hard` re-export of the matching
+materially from a live `export_hard()` re-export of the matching
 `step12500_soft.pt` (coefficient delta 170; the empty-board opening move
 changed from column 3 to column 0). We classified the saved hard file as
 stale/corrupt and ruled it out of checkpoint-strength claims.
@@ -791,7 +791,7 @@ stale/corrupt and ruled it out of checkpoint-strength claims.
 **What was actually wrong:** `src/c4/soft_loader.py` rebuilt the model's
 GF coefficient lookup table `coef_set` at load time. The trainer generates
 that table at model construction from a seeded RNG; the loader regenerated
-it with a *different* RNG draw, so `export_hard` interpreted the same
+it with a *different* RNG draw, so `export_hard()` interpreted the same
 argmax indices as different GF coefficients. The trainer's own saved hard
 files were always internally correct — only *reloading and re-exporting*
 was wrong.
@@ -862,11 +862,11 @@ board and its mirror two different answers. Measured on the same 16,878
 pairs at budget 0.25 s (the production default):
 
 ```
-pairs compared: 16878   (skipped 0)
-  self-symmetric: 1156    (label must simply AGREE)
-  non-self-symmetric: 15722   (label must be REFLECTED)
-consistent: 16878/16878 = 100.00%
-inconsistent: 0
+pairs compared       : 16878   (skipped 0)
+  self-symmetric     : 1156    (label must simply AGREE)
+  non-self-symmetric : 15722   (label must be REFLECTED)
+consistent           : 16878/16878 = 100.00%
+inconsistent         : 0
 ```
 
 Two real bugs were found and fixed while getting there, both worth
@@ -926,7 +926,7 @@ Both were in the scripts that were supposed to *measure* symmetry, and
 both produced plausible-looking numbers.
 
 **`tg_mirror_audit.py` used the wrong reflection.** It had a local
-`reflect_bb` that was **column-major** (`bb >> (c*7)`) while the
+`reflect_bb()` that was **column-major** (`bb >> (c*7)`) while the
 bitboard is **row-major** (bit `r*7+c`). It reflected the wrong bits and
 produced a "mirrored" board whose heights did not match its stones. The
 script now imports the tested `src/c4/mirror.py`. Re-running the audit on
@@ -952,8 +952,8 @@ for one that is actually 100% consistent.
 The corrected metric splits the two cases:
 
 ```
-self-symmetric: label must simply AGREE
-non-self-symmetric: label must be REFLECTED (tj[c] == ti[6-c])
+self-symmetric      : label must simply AGREE
+non-self-symmetric  : label must be REFLECTED (tj[c] == ti[6-c])
 ```
 
 **Corrected measurements with the fixed metric and the fixed builders:**
@@ -1353,13 +1353,15 @@ No trainer processes remained after the runs.
 
 ---
 
-## 0f. THE V23 / DATA / OPENING-CURRICULUM QUESTION — ANSWERED  The question was: *"what about V23? so in other words no success. i still
+## 0f. THE V23 / DATA / OPENING-CURRICULUM QUESTION — ANSWERED 2026-10-27
+
+The question was: *"what about V23? so in other words no success. i still
 think it is the training data. can't we just teach it the first 7 moves.
 that is not so many we can almost generate them? think hard. Why is it
 wrong what we do?"* — with a competing structural explanation attached
 (sparse lag wiring + the entropy regulariser).
 
-**Short answer: the original diagnosis was right about the data, and the reviewer was right
+**Short answer: the data diagnosis was right, and the reviewer was right
 about the structure. They are two different problems, and BOTH must be
 fixed. Neither alone is sufficient.**
 
@@ -1581,7 +1583,7 @@ numbers, the confound analysis, and the corrected experiment.
 
 ---
 
-## 0g. THE REAL 2x2 — WHAT THE FIRST ONE ACTUALLY PROVED 
+## 0g. THE REAL 2x2 — WHAT THE FIRST ONE ACTUALLY PROVED (2026-10-27)
 
 ### 0g.1 The result as measured
 
@@ -1685,7 +1687,7 @@ A/B corpus — and it overlaps both training sets:
 
 ```
 holdout boards:                    4,325
-overlap with A/B training corpus:    207  (4.8% of holdout)
+overlap with A/B training corpus:    207  ( 4.8% of holdout)
 overlap with curriculum corpus:    1,099  (25.4% of holdout)
 ```
 
@@ -1716,7 +1718,7 @@ hypothesis plus a 21x undertraining confound.** The corrected run in
 
 ---
 
-### 0e.6 STATUS AND BLOCKER LIST (night, current)
+### 0e.6 STATUS AND BLOCKER LIST (2026-10-26 night, current)
 
 **What is fixed and validated:**
 
@@ -1725,7 +1727,7 @@ hypothesis plus a 21x undertraining confound.** The corrected run in
 | exported tables learn | argmax frozen at every checkpoint | hash changes at every checkpoint | **FIXED** (`--table-bias 0.0`) |
 | hard export reads the board | 0.0000 until step 3000 | 0.5444 from step 500 | **FIXED** |
 | `coef_set` stability | — | byte-identical across bias settings | **VERIFIED** |
-| old checkpoints load | — | `missing=`, 0 missing keys | **VERIFIED** |
+| old checkpoints load | — | `missing=[]`, 0 missing keys | **VERIFIED** |
 | live shipped path | 6 columns, 16.3% non-centre | 7 columns, 30.8% non-centre | **VERIFIED** |
 | zero-FLOP claim | — | GF trunk 4,608 integer ops, 0 float multiplies | **UNCHANGED** |
 | STE schedule question | unmeasurable (frozen) | tie → keep `--hard-start 0` | **ANSWERED** |
@@ -1817,17 +1819,17 @@ outcome_tags = [torch.full((PLY_LEN,), 1.0) for _ in examples]   # 10 bytes
 ```
 
 `PLY_LEN` is 10, but the training window is `ctx + 1 = 193` bytes.
-`build_outcome_batch` copies `tag[start:start+T]` into the `(B, T)`
+`build_outcome_batch()` copies `tag[start:start+T]` into the `(B, T)`
 weight grid, so only positions **0–9** ever received weight. The move
 decisions live at positions **1, 11, 21, … 191**. The labelled final
-position therefore had weight **0.0**, and `_weighted_move_loss` hit its
+position therefore had weight **0.0**, and `_weighted_move_loss()` hit its
 guard:
 
 ```python
 w = w_flat[keep]
-tot = w.sum
+tot = w.sum()
 if float(tot) <= 0.0:
-    return logits_flat.sum * 0.0        # <- the whole move loss
+    return logits_flat.sum() * 0.0        # <- the whole move loss
 ```
 
 The move loss was multiplied by zero. The 256-way byte loss still ran, so
@@ -1850,9 +1852,9 @@ The 7-way loss masks illegal columns with `-inf` before `log_softmax`,
 then multiplies by a target distribution that is exactly `0.0` there:
 
 ```
-logits: [-1.80, -inf, -1.64,...]
-target: [ 0.52,  0.00,  0.31,...]
-product: [..., 0.0 * -inf = NaN,...]
+logits    : [-1.80, -inf, -1.64, ...]
+target    : [ 0.52,  0.00,  0.31, ...]
+product   : [ ...  , 0.0 * -inf = NaN, ... ]
 ```
 
 Every supervised row produced NaN, poisoning the entire loss. This was
@@ -1866,7 +1868,7 @@ target over legal columns only.
 NEG = -1e9
 sub = sub.masked_fill(~lg, NEG)
 lp = torch.log_softmax(sub, dim=-1)
-d = dist[keep] * lg.float
+d = dist[keep] * lg.float()
 d = d / d.sum(dim=1, keepdim=True).clamp(min=1e-12)
 nll = -(d * lp).sum(dim=1)
 ```
@@ -1891,13 +1893,13 @@ PASS
 This is the bug that hid the win. Found while reconciling V21's log
 against an independent 2,000-game ladder.
 
-**`evaluate_play`** (`src/c4/train.py`) played the model with
+**`evaluate_play()`** (`src/c4/train.py`) played the model with
 `torch.multinomial` **always**, regardless of temperature:
 
 ```python
 logits = logits / max(temperature, 1e-6)
 probs  = F.softmax(logits + mask, dim=-1)
-col    = int(torch.multinomial(probs, 1).item)   # ALWAYS samples
+col    = int(torch.multinomial(probs, 1).item())   # ALWAYS samples
 ```
 
 The comment immediately above the call site claimed:
@@ -1909,10 +1911,10 @@ The comment immediately above the call site claimed:
 The code did the opposite. **Every `vs_ref` number in every log from V15
 onward graded a stochastic policy.**
 
-**`_eval_opponents`** had the same defect one level down:
+**`_eval_opponents()`** had the same defect one level down:
 
 ```python
-agent = Agent(model, device, greedy=temperature <= 1e-3,...)
+agent = Agent(model, device, greedy=temperature <= 1e-3, ...)
 ```
 
 `--eval-temp` defaulted to **0.2**, so `greedy` was **False**. Every
@@ -1935,10 +1937,10 @@ log since V15 is suspect.
 
 **Fixes applied:**
 
-1. `evaluate_play` now plays greedily (`argmax` over legal columns) when
+1. `evaluate_play()` now plays greedily (`argmax` over legal columns) when
    `temperature <= 1e-3`; the old sampling path remains available for
    anyone who explicitly asks for it.
-2. `_eval_opponents` now always constructs `Agent(..., greedy=True)`.
+2. `_eval_opponents()` now always constructs `Agent(..., greedy=True)`.
 3. `--eval-temp` default changed **0.2 → 0.0** (greedy), with a comment
    saying that raising it above 1e-3 breaks comparability with the
    shipping policy.
@@ -1951,7 +1953,7 @@ was not learning; the sampling meant the model was not being measured.
 
 ## 3b. Bug 4 — the promotion gate compared two different scales
 
-Found **after** the acceptance test passed. The model was fine;
+Found 2026-10-23, **after** the acceptance test passed. The model was fine;
 the *bookkeeping that decides which checkpoint ships* was broken.
 
 ### The defect
@@ -2085,7 +2087,7 @@ step2900 detail:  vs random  W1762 L151 D87   90.28%  distinct 1380/2000  (P1 90
                   vs minimax   W632 L1295 D73  33.42%  distinct  910/2000
 ```
 
-**Re-verified** — the ladder and head-to-head were re-run
+**Re-verified 2026-10-23 19:35** — the ladder and head-to-head were re-run
 end to end after the promotion-gate fix and reproduce these numbers
 exactly (`runs/_probe/ladder_top3.log`, `runs/_probe/headtohead.log`,
 both `EXIT=0`). The go/no-go verdict printed by the harness itself:
@@ -2150,13 +2152,13 @@ step   holdout   edge   max-share  cols>5%   columns played
   300   39.67%  48.3%     51.4%        2
   400   36.98%  48.0%     45.5%        3
   800   39.85%  50.9%     44.1%        4
-1100   42.35%  50.9%     89.8%        1     degenerate
-1200   42.42%  50.2%     76.5%        2
-1600   40.33%  51.6%     40.8%        5
-2000   39.00%  52.8%     29.8%        6     <- healthiest spread
-2400   41.35%  53.7%     55.3%        4
-2900   44.25%  55.1%     82.2%        2     <- peak holdout, BEST LADDER
-3000   36.52%  54.5%     38.9%        3
+ 1100   42.35%  50.9%     89.8%        1     degenerate
+ 1200   42.42%  50.2%     76.5%        2
+ 1600   40.33%  51.6%     40.8%        5
+ 2000   39.00%  52.8%     29.8%        6     <- healthiest spread
+ 2400   41.35%  53.7%     55.3%        4
+ 2900   44.25%  55.1%     82.2%        2     <- peak holdout, BEST LADDER
+ 3000   36.52%  54.5%     38.9%        3
 ```
 
 Compare to every prior run: **21.8% → 30.6% in 250 steps, then frozen for
@@ -2211,9 +2213,9 @@ solver's ties are narrow.
 | Change | Location | Status |
 |---|---|---|
 | Full-window outcome tags | `train.py` imported-row branch | **live, verified** |
-| Finite `-1e9` illegal mask + target renormalisation | `_weighted_move_loss` | **live, verified** |
-| `evaluate_play` plays greedy when `temp <= 1e-3` | `train.py` | **live** |
-| `_eval_opponents` always greedy | `train.py` | **live** |
+| Finite `-1e9` illegal mask + target renormalisation | `_weighted_move_loss()` | **live, verified** |
+| `evaluate_play()` plays greedy when `temp <= 1e-3` | `train.py` | **live** |
+| `_eval_opponents()` always greedy | `train.py` | **live** |
 | `--eval-temp` default 0.2 → **0.0** | `train.py` CLI | **live** |
 | `centre_policy` added to `OPPONENTS` | `opponents.py` | **live** — the centre rule is now reachable from the ladder harness instead of being hard-coded in the trainer |
 | Unlabeled history plies suppressed (no fabricated one-hot) | move-target build | live, measured (5.3% → 100% real supervision) |
@@ -2222,7 +2224,7 @@ solver's ties are narrow.
 | **Protocol-tagged checkpoints** (`ladder_opp` / `ladder_greedy` / `ladder_protocol`) | every `torch.save` of a checkpoint | live — a score is meaningless without its protocol |
 | **Protocol-aware resume** (mismatched protocol ⇒ seed `-inf`) | resume branch | live — caught the live V22 "can never promote" bug |
 | `final.json` slot names match the 4-tuple | `train.py` | live — was reading `best_sel[2]` as a "vs_ref score" |
-| `save_snapshot` — periodic weights written independently of promotion | `save_every` branch | live, smoke-verified |
+| `save_snapshot()` — periodic weights written independently of promotion | `save_every` branch | live, smoke-verified |
 | Argmax-equality holdout optimality (was `T > 1e-6`) | `Holdout.__init__` | live, verified |
 | Seed default 0 → **32** | CLI | live |
 
@@ -2266,13 +2268,13 @@ correctly refuses to reuse their ladder score.
 
 `best_hard.pt` for V21 is a bare hard export with **no** metadata dict — the
 loader must read the transcript/version stamp from elsewhere. Do not assume
-`meta` exists on hard checkpoints written by the older exporter.
+`meta` exists on hard checkpoints written before 2026-10-23.
 
 ---
 
 ## 8. What to do next
 
-> **REWRITTEN  (night).** The V22 run below is **DEAD** —
+> **REWRITTEN 2026-10-26 (night).** The V22 run below is **DEAD** —
 > it was training with the frozen-table bug, so every one of its
 > checkpoints is a constant-column policy. Its "ladder net -61" and
 > "holdout 46.3%" numbers are **meaningless** as evidence of quality:
@@ -2283,7 +2285,7 @@ loader must read the transcript/version stamp from elsewhere. Do not assume
 >
 > The current blocker list, in order, is in §0e.6 below.
 
-### Current blockers (night)
+### Current blockers (2026-10-26 night)
 
 1. **Centre collapse.** The fixed hard export still picks c3 on
    **67.7%** of disjoint positions and scores only **8.7%** off-centre.
@@ -2309,7 +2311,7 @@ passes every release gate.
 ### Historical (V22 — dead, see warning above)
 
 - **V22** (`runs/c4/v7mixed_v22/`) — 25,000 steps, greedy evaluation, seed 32,
-  ctx 192, batch 16. Resumed from V21 step 2900; **restarted** at  from
+  ctx 192, batch 16. Resumed from V21 step 2900; **restarted** at 19:25 from
   the step-3500 snapshot because the first instance was running the pre-fix
   promotion gate and could never promote (§3b). The restarted instance
   promotes correctly: step 4000 ladder net **-136**, step 4250 promoted to
@@ -2320,7 +2322,7 @@ passes every release gate.
   16250 → 42.0%, 16750 → 41.7%. Log: `runs/_probe/v22.log`.
   Process: `proc_2253d2da9d1e`. **Latest observed step 16,750 of 25,000.**
   Periodic snapshots are landing normally (`step16500_soft.pt` and
-  `step16500_hard.pt` written during that run); 54 checkpoint
+  `step16500_hard.pt` written at 00:01:55 on 2026-10-26); 54 checkpoint
   files present.
 
   **New promotion:** step **8750** displaced step 4250 as the promoted
@@ -2410,12 +2412,12 @@ passes every release gate.
   # probe LOSS: masks every NON-optimal column to -1e9 and renormalises
   # the target over the optimal set
   logits = logits.masked_fill(~optmask, NEG)
-  d = optmask.float; d = d / d.sum(1, keepdim=True)
-  loss = -(d * torch.log_softmax(logits, dim=-1)).sum(1).mean
+  d = optmask.float(); d = d / d.sum(1, keepdim=True)
+  loss = -(d * torch.log_softmax(logits, dim=-1)).sum(1).mean()
 
   # probe METRIC: unmasked argmax over all 7 columns, hit iff optimal
   pr = logits.argmax(-1)
-  tie = om.gather(1, pr.view(-1, 1)).squeeze(1).float.mean
+  tie = om.gather(1, pr.view(-1, 1)).squeeze(1).float().mean()
   ```
 
   That objective only asks the model to discriminate **among** the optimal
@@ -2427,7 +2429,7 @@ passes every release gate.
 
   **Defect 2 — the probe LEAKED THE ANSWER into its own input.** The probe
   built its window with `src.c4.agent.trainer_window`, which is the
-  **inference** convention: `x = seq[n-ctx: n]`. That places the label
+  **inference** convention: `x = seq[n-ctx : n]`. That places the label
   byte `seq[-1]` **at input slot ctx-1**, and the probe read its logits at
   **ctx-1**. Two errors in one — it was predicting the *padding* byte
   rather than the label, while the true label sat in its own input at lag
@@ -2550,7 +2552,7 @@ and swung between 23.05% and 50.00% with no trend.
 is measuring something incoherent; a probe whose metrics rise together
 is measuring a real task.
 
-**Sleep resilience.** The host slept and killed
+**Sleep resilience.** The host slept at ~22:49 on 2026-10-25 and killed
 the probe mid-run (its log ends at step 800 with **no `EXIT=` marker** —
 killed, not finished). The probe now checkpoints weights + optimizer
 state + step counter atomically (temp file, then `os.replace`) every
@@ -2605,9 +2607,9 @@ mutual truncation carrying two `EXIT=15` lines. Only the per-run logs
 - **Never run two trainers against the same `--run-dir`.** A killed wrapper
   leaves its Python child alive; both then write `best_hard.pt` and
   `step*.pt` into the same directory and the checkpoints become a mix of
-  two different models. This happened: two orphan trainers (,)
-  were racing the good one. Detection: `psutil` over
-  `cmdline` for `src.c4.train`. The corrupted output was moved to
+  two different models. This happened: two orphan trainers (19:10, 19:13)
+  were racing the good one (19:25). Detection: `psutil` over
+  `cmdline()` for `src.c4.train`. The corrupted output was moved to
   `runs/c4/_ARCHIVE_corrupt_v22_concurrent/` — do not use it.
   Kill the **child** process, not just the shell wrapper.
 - **The same applies to log files.** Five concurrent `tg_scale4096.py`
@@ -2626,9 +2628,9 @@ mutual truncation carrying two `EXIT=15` lines. Only the per-run logs
   `measure-before-assuming-hardware-limits`.
 - **Check `best_hard.pt` exists and advances.** A run that trains for hours
   without ever promoting is a silent failure. The startup log line
-  `promotion gate seeded from checkpoint:...` is the first place to look.
-- **A sleeping host kills background jobs.** The machine slept
-  at ~ and the OS killed the capacity probe mid-run — its log ended at
+  `promotion gate seeded from checkpoint: ...` is the first place to look.
+- **A sleeping host kills background jobs.** On 2026-10-25 the machine slept
+  at ~22:49 and the OS killed the capacity probe mid-run — its log ended at
   step 800 with no `EXIT=` marker, which is how you tell "killed" from
   "finished". The trainer survived on its periodic snapshots; the probe did
   not, because it had no checkpoint of its own until then. Every long
@@ -2663,7 +2665,7 @@ mutual truncation carrying two `EXIT=15` lines. Only the per-run logs
    up to 500 steps ago. Decoupling the ladder cadence from the snapshot
    cadence would make promotion more responsive.
 5. **Keep the host awake during long background runs.** A sleeping machine
-   kills background jobs — the host sleep killed the capacity probe
+   kills background jobs — the 2026-10-25 sleep killed the capacity probe
    mid-run. The probe now resumes from its own checkpoint, and the trainer
    survives on its periodic snapshots, but a sleep still costs time.
 
@@ -2733,7 +2735,7 @@ Key probes:
 - venv: `.venv-c4` (pandas, pyarrow, psutil)
 - GPU: RTX 5090; one GF step ≈ 0.93 s at batch 16 / ctx 192
 - CPU: 32 cores (the ladder and capacity probes run here, off the GPU)
-- Source shard: `<scratch>/c4data/chunk0.parquet`
+- Source shard: `<data>/chunk0.parquet`
 - Exact solver: `src/c4/exact_solver.py` — mean 0.038 ms, max 0.861 ms
 - Canonical seed: **32**
 - ctx 192, batch 16 — both fixed by the paper
@@ -2759,7 +2761,7 @@ The rules now saved as skills:
 > every prior conclusion — they were all downstream of the same broken
 > assumption.
 
-> And, added: **an evaluation harness has the same failure mode
+> And, added 2026-10-23: **an evaluation harness has the same failure mode
 > as a loss.** Verify that the thing you measure is the thing you ship.
 > Greedy vs sampled is a 8× difference on the same weights.
 
@@ -2788,7 +2790,7 @@ position, a `0 × -inf` NaN, and an evaluation path that sampled the model.
 src/c4/train.py                     trainer; all three fixes live here
 src/c4/move_loss.py                 masked 7-way loss, soft-target blending
 src/c4/opponents.py                 centre / random / heuristic / lookahead / minimax
-src/c4/transcript_v2.py             V2 encoding (column byte = 0x80 | height<<…)
+src/c4/transcript_v2.py             V2 encoding (column byte = 0x80 | height<<… )
 src/c4/transcript.py                COL_BYTE_OFFSET = 0x41
 src/c4/fmt.py                       PLY_LEN=10, MOVE_OFFSET=9
 src/c4/agent.py                     RIGHT_PAD_BYTE, trainer_window, prompt_tokens
@@ -2824,9 +2826,9 @@ runs/_probe/_wincheck.py             window / label-leak verification
 
 ---
 
-## Appendix C — Where the Connect Four work stands 
+## Appendix C — Where the Connect Four work stands (2026-10-27)
 
-> **⚠️ Historical snapshot, superseded.** The `n=166` solver
+> **⚠️ Historical snapshot (2026-10-27), superseded.** The `n=166` solver
 > column below is the non-authoritative default-budget run; the authoritative
 > run is `n=560` (`--budget 120000000`). "The centre-only defect is fixed"
 > was **retracted** — see Appendix D18 and `docs/CURRENT_TRUTH.md`. No arm
@@ -2886,7 +2888,7 @@ board must be reflection-consistent: on the mirrored board it should pick the
 mirrored column. The model is **100% seat-consistent** but only **18.6%
 mirror-consistent** (shipped: 6.2%).
 
-> **SUPERSEDED (, late) — the mirror arm has since been TRAINED
+> **SUPERSEDED (27 Oct 2026, late) — the mirror arm has since been TRAINED
 > and MEASURED. The numbers below are from before that run. The current
 > matched measurement is in Appendix D: `mir_a_s6000` reaches **36.7%**
 > mirror consistency vs `fc_a_s6000`'s **16.4%**, and it also blocks
@@ -2946,11 +2948,11 @@ Training arm `mir_a_tau0` is running (3000 steps, ctx 192, batch 16). Gate:
 
 ---
 
-## Appendix D — The terminal-state bug and its measured blast radius (, late)
+## Appendix D — The terminal-state bug and its measured blast radius (27 Oct 2026, late)
 
 ### What the bug was
 
-`Board.is_full` decided "is the board full?" by testing **one bit**:
+`Board.is_full()` decided "is the board full?" by testing **one bit**:
 
 ```python
 # WRONG -- bit 41 is the top cell of the right-hand column
@@ -2965,14 +2967,14 @@ the **initial commit** (`c250352`), so every consumer inherited it.
 
 ```python
 def is_full(self) -> bool:
-    return not self.valid_actions
+    return not self.valid_actions()
 
 def is_terminal(board: "Board") -> bool:
-    return board.is_win!= 0 or not board.valid_actions
+    return board.is_win() != 0 or not board.valid_actions()
 ```
 
-`is_terminal` is now the **canonical project-wide terminal predicate**.
-Every former `is_full` consumer was migrated: `duel.py`, `play.py`,
+`is_terminal()` is now the **canonical project-wide terminal predicate**.
+Every former `is_full()` consumer was migrated: `duel.py`, `play.py`,
 `corpus.py`, `corpus_quality.py`, `outcome_rl.py`, `augment_corpus.py`,
 `bench_speed.py`, `agent.py`, `threat_corpus.py`, `train.py`.
 
@@ -3028,8 +3030,8 @@ The final audit re-solves nothing, ignores `n_plies`, and asks only:
 ### Appendix D2 — the bug hit TWICE, and it also hit the LABELLER
 
 The relabeller (`tools/build_perply_fast.py:127-128`) skips a position when
-`b.outcome!= Outcome.ONGOING`. Because `outcome` called the buggy
-`is_full`, **the bug also destroyed labels during relabelling** -- not
+`b.outcome() != Outcome.ONGOING`. Because `outcome()` called the buggy
+`is_full()`, **the bug also destroyed labels during relabelling** -- not
 only during corpus generation.
 
 Measured on a 4,000-row sample of every mid-game gap, classifying each
@@ -3049,8 +3051,8 @@ intermediate count of 42,589 was wrong because it bounded the scan by
 `n_plies`, which is itself the corrupted field. The reconciliation:
 
 ```
-total holes (ply_of == -1) across all 320,000 x 19 slots: 1,617,429
-  of which ABOVE the last labelled slot (never processed): 1,516,339  (padding)
+total holes (ply_of == -1) across all 320,000 x 19 slots : 1,617,429
+  of which ABOVE the last labelled slot (never processed) : 1,516,339  (padding)
   of which WITHIN the labelled range (real skipped labels):   101,090
 ```
 
@@ -3173,7 +3175,7 @@ two matchups are degenerate (the models play each other near-deterministically
 from a shared opening) and carry almost no statistical weight. The rows with
 150-258 distinct trajectories are the meaningful ones.
 
-### Appendix D6 — THE ECHO FAULT IS NOT IN THE TEACHER 
+### Appendix D6 — THE ECHO FAULT IS NOT IN THE TEACHER (28 Oct 2026)
 
 This is the measurement that decides what to fix. It was the open question:
 the model copies the opponent's previous column, but **why**?
@@ -3245,7 +3247,7 @@ were never "play column 7" labels — column 7 was illegal in all of them.
 
 Artifact: `runs/_probe/isfull_exact_trigger.json`.
 
-### Appendix D5 — the lost labels are RECOVERED 
+### Appendix D5 — the lost labels are RECOVERED (28 Oct 2026)
 
 The label loss was recoverable, and has now been recovered and independently
 verified. Nothing was thrown away and nothing was regenerated.
@@ -3325,7 +3327,7 @@ Artifact: `runs/_probe/repair_unbiasedness.json`.
 - **V24 still has not been launched.**
 
 
-## Appendix D7 — MECHANISM: THE MODEL WEIGHS "LAST MOVE" AS MUCH AS THE BOARD 
+## Appendix D7 — MECHANISM: THE MODEL WEIGHS "LAST MOVE" AS MUCH AS THE BOARD (28 Oct 2026)
 
 Appendix D6 proved the fault is not the teacher. This appendix identifies
 **where** in the model it lives.
@@ -3355,7 +3357,7 @@ One byte is changed; the action distribution is compared. 25 positions.
 | one **board column** byte | **0.1870** | 25/25 |
 | **turn** byte | 0.1227 | 10/25 |
 
-**Ratio last-move: board = 1.12.** The information is available to the
+**Ratio last-move : board = 1.12.** The information is available to the
 model, and the model uses it about as heavily as the board itself.
 
 The transcript explains why this is a real hazard. In v2 each column byte
@@ -3386,11 +3388,11 @@ ground truth from the canonical exact solver where conclusive and the
 canonical strong solver otherwise, with the source recorded per row:
 
 ```
-model decisions analysed: 333
-exactly proven: 23
-strong-solver only: 310
-the model copied: 75 (22.5%)
-of those copies, CORRECT: 0/75
+model decisions analysed : 333
+exactly proven           : 23
+strong-solver only       : 310
+the model copied         : 75 (22.5%)
+of those copies, CORRECT : 0/75
 ```
 
 By the opponent's stack height at the moment of the decision:
@@ -3431,7 +3433,7 @@ last-move byte uninformative by construction, and if the echo survives
 that, the fault is elsewhere.
 
 
-## Appendix D8 — MIRROR-V2 IS EXACTLY CONSISTENT; AND A TIE-BREAK TRAP 
+## Appendix D8 — MIRROR-V2 IS EXACTLY CONSISTENT; AND A TIE-BREAK TRAP (28 Oct 2026)
 
 ### The trap
 
@@ -3443,7 +3445,7 @@ Two mistakes, both instructive:
 
 1. **The mirror's target is the COLUMN REVERSAL of the original**, not a
    copy. `tools/build_mirror_corpus.py:219` writes
-   `out_tgt[m_out] = tgt[i][:,::-1]`, so a mirror label sits at
+   `out_tgt[m_out] = tgt[i][:, ::-1]`, so a mirror label sits at
    `6 - c` where the original sat at `c`. A check that compares raw
    column indices reports every label as "different".
 2. **Argmax does not commute with reflection.** The teacher target can be
@@ -3468,11 +3470,11 @@ assert set_m == {6 - c for c in set_o}
 Measured over the first 100,000 interleaved pairs:
 
 ```
-labels checked: 1,404,819
-tie set == reflected tie set: 1,404,819  (100.000%)
-tie set MISMATCH: 0
-target sum mismatch: 0
-argmax == 6 - argmax: 99.346%   <- the 0.65% are ties
+labels checked                       : 1,404,819
+tie set == reflected tie set         : 1,404,819  (100.000%)
+tie set MISMATCH                     : 0
+target sum mismatch                  : 0
+argmax == 6 - argmax                 : 99.346%   <- the 0.65% are ties
 ```
 
 **Verdict: the shipping mirror dataset `merged_mirror_v2.npz` is exactly
@@ -3485,14 +3487,14 @@ are exact-solver ties, not defects.
 interleaved pairs), using the tie-set invariant:
 
 ```
-corpus rows: 640,000
-labels compared (interleaved pairs): 4,563,661
-original label!= mirror label: 0
-mirror-original half!= repaired original: 0
-illegal labels: 0
-labels at a terminal position: 0
-c3 share original: 25.7117%
-c3 share mirror: 25.7117%
+corpus rows                                : 640,000
+labels compared (interleaved pairs)        : 4,563,661
+original label != mirror label             : 0
+mirror-original half != repaired original  : 0
+illegal labels                             : 0
+labels at a terminal position              : 0
+c3 share original                          : 25.7117%
+c3 share mirror                            : 25.7117%
 VERDICT: MIRROR_V2_CONSISTENT
 ```
 
@@ -3515,14 +3517,14 @@ heights), not the **representative** (an argmax, a single returned move).
 A representative choice is not group-equivariant, and a mirror check
 built on representatives will report mass false positives.
 
-This applies directly to the solver: `ExactSolver.solve` returns a
-STATUS, and `tg_solver_truth.optimal_moves` returns the full optimal
+This applies directly to the solver: `ExactSolver.solve()` returns a
+STATUS, and `tg_solver_truth.optimal_moves()` returns the full optimal
 SET. Using the status + a single tie-broken move to judge "is this copy
 correct" is the same error, and it is what made the copy-correctness
 probe look like 0/75 when a large part of that was a tie-break artifact.
 
 
-## Appendix D9 — THE ACTUAL DEFECT, MEASURED 
+## Appendix D9 — THE ACTUAL DEFECT, MEASURED (28 Oct 2026)
 
 Earlier appendices established that the terminal bug was real, that the
 labels were `COVERAGE_LOSS_ONLY`, and that 101,090 labels were recovered.
@@ -3556,9 +3558,9 @@ mechanism, the model's choice is unchanged.
 ### Result on the authoritative 1500-position holdout (hard export)
 
 ```
-positions tested: 1,498
-choice CHANGED when the last byte lied: 351  (23.43%)
-model FOLLOWED the false byte:  80  (5.34%)
+positions tested                                : 1,498
+choice CHANGED when the last byte lied          : 351  (23.43%)
+model FOLLOWED the false byte                   :  80  ( 5.34%)
 ```
 
 **M2 is refuted as the primary cause.** The model follows a false
@@ -3574,9 +3576,9 @@ command).
 The same holdout, evaluating each position and its canonical reflection:
 
 ```
-positions tested: 1,500
-mirror-consistent:   941  (62.73%)
-mirror-INCONSISTENT:   559  (37.27%)
+positions tested            : 1,500
+mirror-consistent           :   941  (62.73%)
+mirror-INCONSISTENT         :   559  (37.27%)
 ```
 
 **37.27% of positions get a DIFFERENT (and often much worse) answer when
@@ -3634,7 +3636,7 @@ data property:
 
 ### Method notes (three errors this appendix corrects)
 
-1. **`agent.choose` defaults to the FLOAT path.** The first version of
+1. **`agent.choose()` defaults to the FLOAT path.** The first version of
    the probe called `agent.choose(b, moves)` without `use_hard=True` and
    measured a path that does not play. Everything here uses the hard
    export.
@@ -3642,8 +3644,8 @@ data property:
    version forgot to reflect `mask` and `last_move`, producing an
    illegal board and a nonsense "model always plays c0" result. Use
    `src.c4.mirror.mirror_board`.
-3. **A single solver move is not a tie set.** `ExactSolver.solve`
-   returns a STATUS; `tg_solver_truth.optimal_moves` returns the full
+3. **A single solver move is not a tie set.** `ExactSolver.solve()`
+   returns a STATUS; `tg_solver_truth.optimal_moves()` returns the full
    optimal SET. Judging "is this copy correct" by one tie-broken move
    manufactures asymmetries — the same trap as in Appendix D8.
 
@@ -3701,7 +3703,7 @@ starting at row **193,459**. In every violating ply the stored byte is
 | rows with a contradictory last-move field | **126,537 (39.5%)** |
 | first affected row | 193,459 |
 | affected plies | 1,567,958 |
-| rows that fail `decode_game` | 126,537 |
+| rows that fail `decode_game()` | 126,537 |
 
 The affected rows are **mirror twins of earlier clean rows**. Their board
 bytes are a correct reflection of the earlier row's board, but their
@@ -3727,8 +3729,8 @@ correct (it reflects the last byte), so for every corrupted original row
 the pair is:
 
 ```
-row 2i: board = reflect(board of row 2i+1),  last = X
-row 2i+1: board = the clean board,               last = X
+row 2i   : board = reflect(board of row 2i+1),  last = X
+row 2i+1 : board = the clean board,               last = X
 ```
 
 **The two rows have different boards but the SAME last-move byte.** A
@@ -3760,8 +3762,8 @@ was verified over all 320,000 rows, not assumed.
 | rows changed | 126,537 |
 | bytes changed | 1,567,958 |
 | **rows with a non-last-byte difference** | **0** |
-| rows failing `decode_game` before | 126,537 |
-| rows failing `decode_game` after | **0** |
+| rows failing `decode_game()` before | 126,537 |
+| rows failing `decode_game()` after | **0** |
 | rows with a different move list | 0 |
 | rows with different board bytes | 0 |
 | labels checked for legality after repair | 652,823 |
@@ -3902,9 +3904,10 @@ SYMMETRY TRAINER SMOKE PASSED
 ```python
 SYM_PENALTY_MAX = 2.0 * math.log(7.0) + 1e-6   # 3.8918212981106266
 ...
-sv = float(sym_loss.detach.item)
+sv = float(sym_loss.detach().item())
 if not math.isfinite(sv) or sv > SYM_PENALTY_MAX:
-    raise RuntimeError(f"mirror-equivariance penalty out of range: {sv:.6e}...")
+    raise RuntimeError(
+        f"mirror-equivariance penalty out of range: {sv:.6e} ...")
 if step % 50 == 0 or step == 1:
     print(f"[sym] step {step:5d} penalty={sv:.6e} hard={...} w={args.sym_w}")
 ```
@@ -3925,7 +3928,7 @@ the indexed tensor (cpu)
 Fixed by moving the hard comparison tensors to CPU:
 
 ```python
-hard_pen = mirror_equivariance_loss(ho.cpu, hm.cpu, la.cpu, lam.cpu)
+hard_pen = mirror_equivariance_loss(ho.cpu(), hm.cpu(), la.cpu(), lam.cpu())
 ```
 
 ### Third real defect: the "passing" penalty was measured on a random init
@@ -3949,8 +3952,8 @@ nothing. The smoke test now loads a **trained** checkpoint.
 
 ### A third bug class this surfaced
 
-`tmp/check_copy_justification.py` reported `model mirror-consistent:
-0/25` and `model INCONSISTENT: 25`. That is **not** a model property —
+`tmp/check_copy_justification.py` reported `model mirror-consistent :
+0/25` and `model INCONSISTENT : 25`. That is **not** a model property —
 it is the same class of probe error as the earlier `check_false_last_move`
 result: the probe used a **hand-rolled** mirror that did not reflect
 `mask` or `last_move`, and measured `agent.choose(...)` on the **float**
@@ -3976,11 +3979,11 @@ bytes are regenerated from the same moves.
 Verification (`tmp/verify_mirror_builder_fix.py`, 2,000 rows):
 
 ```
-rows checked: 2000
-move-list mismatches: 0
-original last wrong: 0
-mirror   last wrong: 0
-pair reflection broken: 0
+rows checked            : 2000
+move-list mismatches    : 0
+original last wrong     : 0
+mirror   last wrong     : 0
+pair reflection broken  : 0
 MIRROR BUILDER FIX VERIFIED
 ```
 
@@ -4194,15 +4197,15 @@ consistent: mirror data helps, and does not fix.
 
 ```
 A = fd_a_s6000   B = fd_b_s6000
-games: 300
-unique games: 265   <-- distinct move sequences
-A wins: 130
-B wins: 157
-draws: 13
-A score: 45.5%  (win + 0.5*draw)
-A as P1: 74/150
-A as P2: 56/150
-mean plies: 25.0
+games        : 300
+unique games : 265   <-- distinct move sequences
+A wins       : 130
+B wins       : 157
+draws        : 13
+A score      : 45.5%  (win + 0.5*draw)
+A as P1      : 74/150
+A as P2      : 56/150
+mean plies   : 25.0
 
 VERDICT: too close to call
 ```
@@ -4255,8 +4258,8 @@ which yields exactly the historical **560 / 1500 = 37.3%** proven subset
 and the historical teacher figures:
 
 ```
-teacher target c3: 138/560 (24.6%)
-c3 PROVABLY OPTIMAL: 324/560 (57.9%)
+teacher target c3          : 138/560 (24.6%)
+c3 PROVABLY OPTIMAL        : 324/560 (57.9%)
 ```
 
 | arm | overall solver-opt | c3-bucket (n=138) solver-opt | c3-bucket model-c3 | nc3-bucket (n=422) solver-opt | nc3-bucket model-c3 |
@@ -4414,9 +4417,9 @@ effect — it does not make the policy symmetric.
 #### 4. Canonical strength (`src.c4.duel`, 300 games, eps 0.25, both seats)
 
 ```
-fd_a vs fd_b: A 45.5%  265/300 unique  A_P1 74/150  A_P2 56/150  "too close to call"
-fd_a vs fd_c: A 51.2%  245/300 unique  A_P1 80/150  A_P2 73/150  "too close to call"
-fd_b vs fd_c: A 59.0%  255/300 unique  A_P1 102/150 A_P2 72/150  "too close to call"
+fd_a vs fd_b : A 45.5%  265/300 unique  A_P1 74/150  A_P2 56/150  "too close to call"
+fd_a vs fd_c : A 51.2%  245/300 unique  A_P1 80/150  A_P2 73/150  "too close to call"
+fd_b vs fd_c : A 59.0%  255/300 unique  A_P1 102/150 A_P2 72/150  "too close to call"
 ```
 
 fd_b beats fd_c 59.0% — consistent with fd_c's lower solver-optimality.
@@ -4525,10 +4528,10 @@ runs/_probe/fixed_c_launch.log             fd_c launcher with inner EXIT=0
 **Live and verified**
 
 ```
-UI: http://127.0.0.60/   HTTP 200
-model served: runs/_probe/fd_a_s6000/checkpoints/step6000_hard.pt
-server log: runs/_probe/ui_server_fd_a.log
-parity gate: tmp/test_live_ui_fd_a.py -> ALL PASS (14 checks)
+UI            : http://127.0.0.1:7860/   HTTP 200
+model served  : runs/_probe/fd_a_s6000/checkpoints/step6000_hard.pt
+server log    : runs/_probe/ui_server_fd_a.log
+parity gate   : tmp/test_live_ui_fd_a.py -> ALL PASS (14 checks)
                 UI hard distribution == checkpoint hard export, L1 = 2.07e-08
 ```
 
@@ -4614,11 +4617,11 @@ only meaningful if the model actually plays the column in question.
 Cross-referencing the same artifact's `model_column_profile` shows:
 
 ```
-fd_a vs c6-stacker: model share of col6 = 0.0%   -> 0% echo is VACUOUS
-fd_b vs centre: model share of col3 = 0.0%   -> 0% echo is VACUOUS
-fd_c vs centre: model share of col3 = 0.0%   -> 0% echo is VACUOUS
+fd_a vs c6-stacker : model share of col6 = 0.0%   -> 0% echo is VACUOUS
+fd_b vs centre     : model share of col3 = 0.0%   -> 0% echo is VACUOUS
+fd_c vs centre     : model share of col3 = 0.0%   -> 0% echo is VACUOUS
 mir_a vs c6-stacker: model share of col6 = 30.0%  -> 50% echo is REAL
-mir_a vs centre: model share of col3 = 20.0%  -> 80% echo is REAL
+mir_a vs centre    : model share of col3 = 20.0%  -> 80% echo is REAL
 ```
 
 fd_a's 0% c6-echo is achieved by **never playing column 6 at all**
@@ -4658,7 +4661,7 @@ It is superseded by `runs/_probe/fixed_arms_eval_all_v2.json`
 (`proc_e4e2beb61098`, EXIT=0) has **no** `strength` section at all —
 the duel phase never ran in that run and the evaluator exited 0
 anyway. An empty strength section is not a pass. The `proc_f55098d90917`
-crash (`ValueError: invalid literal for int with base 10: '74/150'`)
+crash (`ValueError: invalid literal for int() with base 10: '74/150'`)
 is the same evaluator's duel parser failing on a fraction string; the
 parser was fixed afterwards and the three-arm run produced real duel
 numbers.
@@ -4745,14 +4748,14 @@ fd_c_s6000: rc=2  keys=['rc','secs']  data ABSENT  n_solvable=None
 ```
 
 There is no `data` key at all. The evaluator's guard
-`if rc == 0 and file.exists` correctly refused to attach the file,
+`if rc == 0 and file.exists()` correctly refused to attach the file,
 so the stale-file confusion I described **did not occur in v2**. The
 artifact was bad for a simpler reason: the phase returned non-zero, the
 guard left the section empty, and the harness exited 0 anyway. The
 reproduction is exact:
 
 ```
-$ python -u tg_solver_truth.py --ckpt... --max-empty 24 --budget 120000000...
+$ python -u tg_solver_truth.py --ckpt ... --max-empty 24 --budget 120000000 ...
 tg_solver_truth.py: error: unrecognized arguments: --budget 120000000
 repro EXIT=2
 ```
@@ -4770,7 +4773,7 @@ reproduces the authoritative figures exactly —
 **Defect 3 — the two-arm run wrote an empty strength section and exited 0.**
 `runs/_probe/fixed_arms_eval_ab.json` (`proc_e4e2beb61098`, EXIT=0) has
 `strength: None` — the duel phase never ran (its parser hit
-`ValueError: invalid literal for int with base 10: '74/150'` on a
+`ValueError: invalid literal for int() with base 10: '74/150'` on a
 fraction string). The parser was fixed afterwards, and the three-arm
 run produced real duel numbers. But the earlier artifact is still on
 disk, still exit-0, and still empty.
@@ -4882,15 +4885,15 @@ The evaluator wrote `runs/_probe/eval_{arm}_holdout.json`,
 `_mirror.json`, `_solver.json`, `eval_{arm}.log` and
 `duel_{a}_vs_{b}.log` with **no run tag**. v2 and v3 therefore wrote to
 identical paths. In this particular pair they happened to be sequential
-(v2 finished, v3's first intermediate was written),
+(v2 finished 03:16:57, v3's first intermediate was written 03:33:22),
 so no corruption occurred — but the hazard is real and was one
 scheduling hiccup away:
 
-* run A's phase fails -> the guard `if file.exists` skips the
+* run A's phase fails -> the guard `if file.exists()` skips the
   (stale) file -> but if run B already wrote that file, run A reads
   **run B's data as its own**;
 * run A's phase succeeds but run B overwrites the file between A's
-  subprocess exit and A's `read_text` -> A records B's numbers.
+  subprocess exit and A's `read_text()` -> A records B's numbers.
 
 The per-arm log is overwritten too: `runs/_probe/eval_fd_a_s6000.log`
 now holds v3's content, so **v2's argparse stderr is gone**. The
@@ -4901,7 +4904,7 @@ run **deletes its own tag's intermediates before starting**, so a
 leftover can never be adopted.
 
 **Bug 5 — a missing checkpoint was silently skipped.**
-`if not ck.exists: print("skipping"); continue` meant an arm whose
+`if not ck.exists(): print("skipping"); continue` meant an arm whose
 checkpoint was absent vanished from the artifact while the harness
 still exited **0**. The artifact looked complete but omitted an arm the
 caller explicitly asked for. Fixed: a missing checkpoint is now a
@@ -4939,7 +4942,7 @@ ran *in this run*, produced the *required* data, and used the
 
 Artifact: `runs/_probe/fixed_arms_eval_all_v4.json`
 Run tag: `v4` (every intermediate namespaced, pre-cleaned)
-Self-audit in artifact: `ok: true`, `failures: `
+Self-audit in artifact: `ok: true`, `failures: []`
 Standalone verifier: `ARTIFACT_VALID`
 
 ```
@@ -5010,7 +5013,7 @@ numbers computed on only **42** proven positions, and wrote them to
 **560** positions. Resolving the ordering:
 
 ```
-solver_buckets_fd.json   Birth    Modify 
+solver_buckets_fd.json   Birth 02:01:44   Modify 02:16:08
 ```
 
 The 42-run wrote its file first; the authoritative
@@ -5099,7 +5102,7 @@ now the default, and the easy subset must be asked for explicitly.
 **Change 2 — `--run-tag` namespaces the output path.**
 
 ```python
-ap.add_argument("--run-tag", default="",...)
+ap.add_argument("--run-tag", default="", ...)
 ...
 if args.run_tag:
     out_path = out_path.with_name(f"{out_path.stem}_{args.run_tag}"
@@ -5146,7 +5149,7 @@ authoritative.
 
 ---
 
-## Appendix D12 — Measurement-bug family in the tactical probes 
+## Appendix D12 — Measurement-bug family in the tactical probes (2026-10-28)
 
 ### D12.0 What happened
 
@@ -5170,7 +5173,7 @@ def choose(self, board: Board, moves: Sequence[int], use_hard: bool = False) -> 
 `moves` is the **sequence of columns already played**, not the set of legal
 columns. The prompt is built from it (`prompt_tokens(moves)` →
 `encode_game(moves) + encode_state(board, last=moves[-1])`); the `board`
-argument is used only for the legal mask inside `choose`.
+argument is used only for the legal mask inside `choose()`.
 
 The **shipped UI was never affected** — `src/c4/ui_server.py` passes
 `list(self.moves)` at lines 207, 279 and 298. The bug was only in the
@@ -5184,11 +5187,11 @@ softmax against the UI's `ai_move` and `last_decision.hard_cols`.
 
 ```
 === LIVE UI <-> CORRECTED PROBE PARITY ===
-  model plies observed: 75
-  chosen column matches: 75/75
-  distribution comparisons: 72
-  mean L1 (UI vs probe): 0.000e+00
-  max  L1 (UI vs probe): 0.000e+00
+  model plies observed          : 75
+  chosen column matches         : 75/75
+  distribution comparisons      : 72
+  mean L1 (UI vs probe)         : 0.000e+00
+  max  L1 (UI vs probe)         : 0.000e+00
   FAILURES: none
   PARITY_OK = True
 ```
@@ -5205,8 +5208,8 @@ defects fixed.
 ------------------------------------------------------------------
   1-6    |  1239 |   17.9% (n=28)  |   23.5% (n=34)  | 0.0% (n=1174)
   7-12   |  1155 |   17.9% (n=234) |   20.8% (n=202) | 0.3% (n=698)
-13-20   |  1588 |   18.3% (n=657) |   20.6% (n=340) | 3.0% (n=470)
-21-30   |  2018 |   27.1% (n=1318)|   22.4% (n=299) | 4.1% (n=197)
+ 13-20   |  1588 |   18.3% (n=657) |   20.6% (n=340) | 3.0% (n=470)
+ 21-30   |  2018 |   27.1% (n=1318)|   22.4% (n=299) | 4.1% (n=197)
 
 OVERALL: take-win 23.4%  block 21.4%  gave-away 0.9%
 ```
@@ -5246,7 +5249,7 @@ prompt and board both taken from the position **before** the labelled ply.
      group |      n |    float |     hard |  hard=actual |  always c3
 ------------------------------------------------------------------------
    win_now |    221 |    24.0% |    14.9% |        29.9% |      11.8%
-block_now |    334 |    44.6% |    41.3% |        40.4% |      10.8%
+ block_now |    334 |    44.6% |    41.3% |        40.4% |      10.8%
     double |     37 |    10.8% |     8.1% |        21.6% |      10.8%
    neither |   3860 |    27.6% |    25.2% |        28.2% |      28.7%
        ALL |   4452 |    28.6% |    25.7% |        29.2% |      26.4%
@@ -5277,13 +5280,13 @@ The UI shows `softmax(hard_forward)` over the **legal** columns. That is a
 `tmp/audit_100pct_semantics.py` — 19,497 positions:
 
 ```
-  positions measured: 19497
-  displayed at 100%: 902 (4.63%)
-...with only ONE legal column: 902
-...with MULTIPLE legal columns: 0
+  positions measured                    : 19497
+  displayed at 100%                     : 902 (4.63%)
+    ...with only ONE legal column       : 902
+    ...with MULTIPLE legal columns      : 0
   100% AND the model had a win available: 337
-  displayed >= 50%: 2842
-  displayed >= 90%: 909
+  displayed >= 50%                      : 2842
+  displayed >= 90%                      : 909
 ```
 
 **Every single 100% in the shipped UI is the "only one legal column" case.**
@@ -5329,7 +5332,7 @@ metric that a random policy passes perfectly is measuring nothing.
 
 ```python
 def clone(board: Board) -> Board:
-    b = Board
+    b = Board()
     b.p1 = board.p1
     b.p2 = board.p2
     b.turn = board.turn
@@ -5337,7 +5340,7 @@ def clone(board: Board) -> Board:
 ```
 
 It copies `p1`, `p2`, `turn` — but **not `mask` and not `heights`**, and
-those are exactly the two fields `Board.apply_move` uses to decide
+those are exactly the two fields `Board.apply_move()` uses to decide
 *where* a disc lands (`src/c4/board.py:103-111`):
 
 ```python
@@ -5401,7 +5404,7 @@ how many did the policy actually give away?
    possible.
 3. The **take-win and block rows of the OLD control remain valid.** They
    never used the cloned board — they only compared the policy's chosen
-   column against `patterns.immediate_wins` on the original board. So
+   column against `patterns.immediate_wins()` on the original board. So
    "minimax/lookahead 100%, random ~20%" was a correct sanity check of
    the harness, and it stands.
 4. **lookahead is not a tactical oracle.** It takes wins and blocks
@@ -5452,19 +5455,19 @@ the checkpoint's own metadata with a **strict** `load_state_dict` check
 model cannot masquerade as a learning failure).
 
 ```
-  positions with an immediate win: 2445
-  float takes the win: 26.4%
-  hard  takes the win: 25.9%
-  either path takes it: 36.0%
+  positions with an immediate win : 2445
+  float takes the win             : 26.4%
+  hard  takes the win             : 25.9%
+  either path takes it            : 36.0%
   float and hard pick the same col: 55.1%
 
   rank of the best winning column (0 = top choice):
       float: r0=26.4% r1=23.9% r2=16.4% r3=13.4% r4=9.1%  r5=7.3%  r6=3.6%
-      hard: r0=25.9% r1=24.1% r2=17.3% r3=12.7% r4=9.7%  r5=6.5%  r6=3.8%
+      hard : r0=25.9% r1=24.1% r2=17.3% r3=12.7% r4=9.7%  r5=6.5%  r6=3.8%
 
   mean logit gap (top column - best winning column):
       float: 0.4221
-      hard: 0.5955
+      hard : 0.5955
 ```
 
 **Verdict: quantisation is not the problem.** Float and hard agree to
@@ -5489,7 +5492,7 @@ would find more wins than either. That is a cheap, testable hypothesis.
 
 ### D12.9 Premise fix in `tmp/test_ui_isfull.py`
 
-The live-UI `is_full` regression test was **not** part of the earlier
+The live-UI `is_full()` regression test was **not** part of the earlier
 9/9 or 11/11 sweeps, and when run standalone it failed — for a reason
 unrelated to the bug it was written to catch. Its premise was "the human
 stacks column 7 four times, so the game must stay ongoing". But **four
@@ -5521,7 +5524,7 @@ half-initialised "model" that mimics a learning failure.
 
 ---
 
-## Appendix D13 — The release gate had no baseline row 
+## Appendix D13 — The release gate had no baseline row (2026-10-28)
 
 ### D13.0 What we found
 
@@ -5620,7 +5623,7 @@ model number without a baseline is not a result.
 
 ---
 
-## Appendix D14 — Does the model actually learn? 
+## Appendix D14 — Does the model actually learn? (2026-10-28)
 
 The question asked was: *does it learn, can it learn, is it getting better,
 and what about the training data?* This appendix answers all four with
@@ -5849,7 +5852,7 @@ doubt, any of these is fine".
 
 ---
 
-## Appendix D15 — Consolidated re-measurement batch 
+## Appendix D15 — Consolidated re-measurement batch (2026-10-28)
 
 Five background jobs completed and were consolidated into one answer.
 Two of them (`proc_a1bf0f8e3e66`, `proc_0a34d88e8c1f`) wrote to the
@@ -5857,7 +5860,7 @@ Two of them (`proc_a1bf0f8e3e66`, `proc_0a34d88e8c1f`) wrote to the
 log** (`runs/_probe/fit_aligned_v2.log`) — the canonical constraint says
 never let two processes write the same log. The failed run exited 1; the
 successful run exited 0 and the artifact on disk is from the successful
-one (mtime, tail shows the complete summary table). **Lesson:
+one (mtime 08:31:30, tail shows the complete summary table). **Lesson:
 the artifact is valid, but the pair must not be repeated.** Recorded here
 so the next agent does not "re-run to be safe" and clobber a good file.
 
@@ -5945,7 +5948,7 @@ exit 0 -> runs/_probe/teacher_vs_solver.json
 | teacher suboptimal | 5.4 % (30) |
 | c3 in the optimal set | 57.9 % (324) |
 | unique-optimum positions | 112 (**20.0 %**) |
-| optimal-set sizes | 2,,,,, 1, 2 |
+| optimal-set sizes | 1:112, 2:55, 3:41, 4:31, 5:68, 6:101, 7:152 |
 
 **The verdict field says `TEACHER_IS_SUBOPTIMAL` — that label is
 misleading.** 94.6 % optimal is not a bad teacher. The real defect is not
@@ -5955,8 +5958,8 @@ several are correct, and that one column is centre-biased.
 ### D15.4 Corrected aligned fit audit — `proc_0a34d88e8c1f` (success)
 
 ```text
-tmp/audit_fit_aligned.py --float-ckpt...step6000_soft.pt \
-  --hard-ckpt...step6000_hard.pt --rows 800
+tmp/audit_fit_aligned.py --float-ckpt ...step6000_soft.pt \
+  --hard-ckpt ...step6000_hard.pt --rows 800
 exit 0 -> runs/_probe/fit_aligned_v2.json
 ```
 
@@ -5997,7 +6000,7 @@ model.
 
 ---
 
-## Appendix D16 — The real mechanism: the model collapsed to a 3-column prior 
+## Appendix D16 — The real mechanism: the model collapsed to a 3-column prior (2026-10-28)
 
 D15 said "the labels are the bottleneck". That was correct but incomplete.
 This appendix measures **what the model actually learned**, on the
@@ -6026,7 +6029,7 @@ exact optimal set):
 **model c3+c4+c5 = 94.1 %. label c3+c4+c5 = 59.6 %.**
 Total-variation distance model↔label = **0.377**.
 
-> **⚠️ CORRECTION (late — see Appendix D18).** The 94.1 % figure
+> **⚠️ CORRECTION (2026-10-28, late — see Appendix D18).** The 94.1 % figure
 > above is **specific to this 560-position solver-proven subset**, which is
 > endgame-heavy because it is restricted to `≤24` empty cells. It is **not**
 > a whole-model property. On the full **19,279-position** release holdout the
@@ -6172,7 +6175,7 @@ data.
 
 ---
 
-## Appendix D17 — Second consolidation batch, incl. two live fixes
+## Appendix D17 — Second consolidation batch (2026-10-28), incl. two live fixes
 
 Seven background processes reported. Five were **stale duplicates** of
 jobs already incorporated into D14–D16; one was a **failed duplicate**;
@@ -6197,9 +6200,9 @@ into `sys.path` (line 45) — but **after** the `src.c4` import at line 48
 of the failing copy. The currently-on-disk copy has the correct order
 and imports cleanly (verified: `from src.c4.board import Outcome` and
 `from src.c4.exact_solver import ExactSolver` both succeed with
-`ROOT =.../ZeroFLops-paper`). The crash was a **pre-fix duplicate**
+`ROOT = .../ZeroFLops-paper`). The crash was a **pre-fix duplicate**
 launched before the path fix; the authoritative artifact
-`runs/_probe/teacher_vs_solver.json` (655 B, mtime) is intact
+`runs/_probe/teacher_vs_solver.json` (655 B, mtime 08:21:20) is intact
 and parses: `n_proven=560`, `teacher_optimal_pct=94.6`,
 `unique_optimum_pct=20.0`, `verdict=TEACHER_IS_SUBOPTIMAL`. **No
 artifact was corrupted by the failed run.**
@@ -6236,7 +6239,7 @@ This is the **stale, already-diagnosed** test. Its premise drives the
 human to play column 7 four times in a row and assert the game stays
 ongoing — but four discs in one column is a **vertical four**, so the
 server correctly refuses the 4th move with HTTP 400. The test was
-failing for a reason unrelated to the `is_full` bug it was written to
+failing for a reason unrelated to the `is_full()` bug it was written to
 catch.
 
 **Fix applied:** `tmp/test_ui_isfull.py` is now a **superseded shim**
@@ -6327,7 +6330,7 @@ truth:
 | the 28.3 % agreement is a **decoding bug** | **REFUTED** - a 12-convention orientation grid selected `row_flip=True, col_flip=False, player=parity`, exactly matching `tools/import_hf_c4.py`; 0 sentinel misplacements over 400 rows; label argmax in the exact optimal set **100.0 %** | `runs/_probe/decoding_grid.json` |
 | the 28.3 % number itself is wrong | **CONFIRMED** - it is a tie-break-coincidence artefact. Label **in** the exact optimal set = 100.0 %, **0** suboptimal labels, predicted coincidence 46.4 % | `runs/_probe/thirty_pct_decomposition.json` |
 | the evaluation set is distorted | **CONFIRMED** - 560 positions are endgame-heavy by construction (`<=24` empty cells); 940/1,500 unproved and excluded | `runs/_probe/solver_buckets_auth_baselines.json` |
-| the ladder never played (`W0L0D0`) | **CONFIRMED** - `run_fixed_ab.sh` sets `--eval-games 0`; `evaluate_play(..., 0,...)` returns W0L0D0 by construction. Re-run with 24 games: **W12 L12 D0** | `runs/_probe/ladder_enabled_check.json` |
+| the ladder never played (`W0L0D0`) | **CONFIRMED** - `run_fixed_ab.sh` sets `--eval-games 0`; `evaluate_play(..., 0, ...)` returns W0L0D0 by construction. Re-run with 24 games: **W12 L12 D0** | `runs/_probe/ladder_enabled_check.json` |
 | `_root_move` values are alpha-beta **bounds**, unusable | **REFUTED** - 0/397 columns had a wrong magnitude, best column exact 60/60. But they are exact for the depth-6 tree under a hand-written eval, not true game values: argmax in the exact optimal set only 76.8 % (median rank corr 1.000, and no failure ever ranked a truly optimal column below a non-optimal one) | `runs/_probe/root_value_bounds.json`, `runs/_probe/strong_teacher_value_quality.json` |
 | graded score-aware targets are worth building | **CONFIRMED, and the data is already in hand** - 78.5 % of proved rows carry a genuinely graded vector, 0 sign contradictions, and the Pons max-set is a **subset** of the exact optimal set in 100 % of proved positions | `runs/_probe/pons_score_set_equality.json`, `runs/_probe/pons_refinement.json` |
 | docs contradict themselves; make one current-truth page | **CONFIRMED and now fixed** - see `docs/CURRENT_TRUTH.md` and D18.2 | this appendix |
@@ -6381,9 +6384,9 @@ runs/_probe/thirty_pct_decomposition.json  exact 28.3 % reproduction
    same batch. **The on-disk artifact was verified directly** before quoting.
 2. **A parse failure that was not a corruption.** `col_sensitivity_fd_a.json` is
    a JSON *list* of 4 per-checkpoint records, not an object; the first parse
-   attempt used `.keys` and failed. The file was fine.
+   attempt used `.keys()` and failed. The file was fine.
 
-### D19.2 The representative audit found a bug in itself, not in the model (late)
+### D19.2 The representative audit found a bug in itself, not in the model (2026-10-28, late)
 
 `tmp/audit_col_representative.py` reported the model at **65.36 %** in-optimal
 on the 560 proven positions, with a per-column histogram that **disagreed**
@@ -6448,20 +6451,20 @@ Artifact: `runs/_probe/col_representative.json`
 
 ---
 
-## Appendix D20 — ROOT CAUSE: the per-ply sidecar was indexed by batch position (late night)
+## Appendix D20 — ROOT CAUSE: the per-ply sidecar was indexed by batch position (2026-10-28, late night)
 
 ### The defect
 
 `src/c4/train.py`, per-ply supervision branch:
 
 ```python
-b_idx = torch.arange(keep.numel, device=device) // (y.shape[1] + 1)
-rows = b_idx[hit].cpu
-s_idx = flat_slot[hit].cpu
+b_idx = torch.arange(keep.numel(), device=device) // (y.shape[1] + 1)
+rows = b_idx[hit].cpu()
+s_idx = flat_slot[hit].cpu()
 tgt = _pt[rows, s_idx].to(device)
 ```
 
-`arange(keep.numel) // (width + 1)` produces **0 … B−1** — the *batch
+`arange(keep.numel()) // (width + 1)` produces **0 … B−1** — the *batch
 index*. The sidecar is indexed per **corpus row**, so the trainer read the
 teacher answers of sidecar rows 0..15 instead of the rows its windows came
 from. The neighbouring single-label path (`_soft_rows_for_batch`) returns
@@ -6600,7 +6603,7 @@ visible in the log rather than hidden.
 returned an identical **12.68 %** for *every* checkpoint, which looked
 like a working metric. Cause: `GFMarkovLM_V6` has **no `import_hard`**, so
 a V6 checkpoint re-loaded through `_load_agent` keeps **zero float
-parameters**; `export_hard` on that model yields an all-zero model whose
+parameters**; `export_hard()` on that model yields an all-zero model whose
 every logit is exactly `0.0` and whose argmax is always column 0 — a
 constant, useless policy. The *saved* hard payload was fine; only the
 float re-export was broken.
@@ -6684,9 +6687,9 @@ supervision, at the canonical seed 32, everything else byte-identical to
 `run_fixed_ab.sh`:
 
 ```text
-fx_a_s6000: repaired original corpus + repaired sidecar
-fx_b_s6000: repaired mirror corpus  + repaired mirror sidecar
-fx_c_s6000: repaired mirror corpus  + repaired mirror sidecar + --sym-w 0.5
+fx_a_s6000 : repaired original corpus + repaired sidecar
+fx_b_s6000 : repaired mirror corpus  + repaired mirror sidecar
+fx_c_s6000 : repaired mirror corpus  + repaired mirror sidecar + --sym-w 0.5
 ```
 
 The launcher verifies, per arm: the log reached the requested step, the
@@ -6869,7 +6872,7 @@ model optimal, unique opt       24.1 %              26.8 %
 model optimal, tied opt         87.7 %              90.0 %
 model plays c1 (of 84 legal)     0 / 84              0 / 84
 model plays c2 (of 74 legal)     0 / 74             24 / 74
-model column histogram      {,,,6:7} {0:2,,,,,}
+model column histogram      {3:16,4:54,5:35,6:7} {0:2,2:24,3:37,4:27,5:10,6:12}
 ```
 
 The corrected arm uses c2 and c0, which fd_a never touched -- the signature
@@ -6904,10 +6907,10 @@ c1 is a completely normal column in the training data.
 holdout positions:
 
 ```text
-c1 wins argmax UNMASKED: 7/200 = 3.5 %
-c1 wins argmax MASKED: 5/200 = 2.5 %
-c1 logit identical to another legal column: never
-mean rank of c1 among legal columns: 4.36 / 7
+c1 wins argmax UNMASKED : 7/200 = 3.5 %
+c1 wins argmax MASKED   : 5/200 = 2.5 %
+c1 logit identical to another legal column : never
+mean rank of c1 among legal columns : 4.36 / 7
 ```
 
 *Is the network reading c1 at all? YES.*
@@ -7016,8 +7019,8 @@ Fixes applied to the script:
 
 **D24.3 Stale-artifact trap.**
 
-`runs/_probe/ingame_strength_fd_a.json` was written at **** while
-`tmp/audit_ingame_strength_fd_a.py` was fixed at ****. The JSON
+`runs/_probe/ingame_strength_fd_a.json` was written at **11:21** while
+`tmp/audit_ingame_strength_fd_a.py` was fixed at **14:52**. The JSON
 predates the fix, so its constant-column reference table carries the
 staircase defect. Citing it as a strength result would have been wrong.
 Both arms were re-measured into `ingame_cols_fd_a_v2.json` and
@@ -7035,12 +7038,12 @@ one used. All p-values above come from it.
 
 **D24.5 Superseded numbers (kept for the record).**
 
-* `runs/_probe/ingame_cols_fd_a.json` (, 200 games) -- staircase refs,
+* `runs/_probe/ingame_cols_fd_a.json` (10:53, 200 games) -- staircase refs,
   unseeded global RNG.
-* `runs/_probe/ingame_strength_fd_a.json` (, 600 games) -- staircase refs.
-* `runs/_probe/ingame_strength_smoke.json` / `..._trueconst.json` (/)
+* `runs/_probe/ingame_strength_fd_a.json` (11:21, 600 games) -- staircase refs.
+* `runs/_probe/ingame_strength_smoke.json` / `..._trueconst.json` (14:50/14:52)
   -- 60-game smoke runs of the corrected harness.
-* `runs/_probe/ingame_cols_fx_a.json` (, 200 games) -- staircase refs.
+* `runs/_probe/ingame_cols_fx_a.json` (16:37, 200 games) -- staircase refs.
 
 **D24.6 Still open.** fx_a was at 5000/6000 when measured. The c1 ranking
 defect is unfixed. The heuristic/lookahead/minimax strength arms have not
@@ -7067,13 +7070,13 @@ opponent    fx_a     fx_b     fx_c    best constant        model verdict
 random     81.1 %   83.2 %   79.9 %  centre_policy 91.3 %  LOSES (p~1e-13)
 heuristic  27.8 %   22.1 %   31.3 %  always-c1   25.6 %  mixed
 lookahead  11.3 %   11.9 %   13.2 %  centre_policy 16.7 %  LOSES (p~1e-6..4e-3)
-minimax    39.7 %   38.6 %   34.2 %  centre_policy 37.0 %  fx_a/fx_b tie (p.06/.19)
+minimax    39.7 %   38.6 %   34.2 %  centre_policy 37.0 %  fx_a/fx_b tie (p .06/.19)
 centre     81.8 %   82.3 %   73.8 %  always-c1   77.2 %  fx_a/fx_b WIN, fx_c LOSES
 ```
 
 fx_a beats ALL SEVEN single-column arms against minimax (p=0.0000 each).
 `centre_policy` is NOT a constant column -- it is a centre-first priority
-sweep (c3, then c4, then c2,...) and is the strongest single opponent
+sweep (c3, then c4, then c2, ...) and is the strongest single opponent
 measured. The corrected model's weakness is DEPTH (loses to lookahead and
 to the priority sweep), not column collapse: against minimax its column
 usage is c0 13.5 %, c1 13.3 %, c2 14.8 %, c3 30.4 %, c4 14.8 %, c5 11.7 %,
@@ -7096,7 +7099,7 @@ alone will not close the gap.
 
 **D25.5 c1 remains a pure ranking defect.** On the 112 unique-optimum
 positions the corrected model selects c1 **0** times (histogram
-{0:2, 1:0,,,,, }) while c2 became reachable
+{0:2, 1:0, 2:24, 3:37, 4:27, 5:10, 6:12}) while c2 became reachable
 (24). Combined with the c1 path probe (responsive logits: 39/39
 perturbations, mean |delta| 0.578; mean legal rank 4.36/7) and the c1
 data audit (c1 = 14.13 % of played moves, 13.48 % of label mass), c1 is
@@ -7113,9 +7116,9 @@ data audit.
   log-space `math.lgamma` version; cross-checked against the naive form
   for n <= 1000 (agreement ~1e-13). This was the cause of the exit-1
   failures in proc_a1655cc2ebf6 and proc_5f46223af61c.
-- The harness printed `COMPARABLE -- MODEL LOSES... (p=0.0000)`,
+- The harness printed `COMPARABLE -- MODEL LOSES ... (p=0.0000)`,
   conflating comparability with the strength verdict. Now prints
-  `COMPARISON VALID -- significant difference -- MODEL LOSES...`.
+  `COMPARISON VALID -- significant difference -- MODEL LOSES ...`.
 
 **D25.7 Process-hygiene failure, disclosed.** An early attempt ran all
 three strength arms concurrently. They did not die; two survived and
@@ -7157,7 +7160,7 @@ error source, not labels and not data coverage).
 (exit 139), `test_live_parity_v4.py` and `test_live_parity_v5.py`
 (ConnectionResetError) all failed inside the sweep and all PASS
 standalone. Cause: two concurrent `tmp/post_train_eval.sh` chains (one
-stale from, one from), both writing the same log and both
+stale from 17:17, one from 19:57), both writing the same log and both
 running the 841 MB generic full-corpus `measure_label_agreement.py`
 scan, competing for CPU with the sweep and sharing the one live UI
 server. After killing PIDs 5604/50492/53844/58564/16160 the serial sweep
@@ -7188,7 +7191,7 @@ handed a checkpoint path rather than a run dir. Now prints an explicit
 ERROR and exits 1. Verified both ways.
 
 **D25.14 Stale-script failure.** `proc_fcb546d0f1ab` (c1 blindspot audit)
-failed with `FileNotFoundError:.../perply_v23_full/corpus.txt` because it
+failed with `FileNotFoundError: .../perply_v23_full/corpus.txt` because it
 ran a STALE copy of the script; the on-disk script points at
 `corpus_320k_fixed.txt` and its artifact is newer than the script.
 Re-running the current script reproduces identical numbers (c1 = 14.13 %
@@ -7197,7 +7200,7 @@ played / 13.48 % label mass / 13.16 % single-column teacher answers).
 
 ---
 
-## Appendix D26 — The full arms were undertrained: 0.30 epochs 
+## Appendix D26 — The full arms were undertrained: 0.30 epochs (2026-10-28)
 
 **This supersedes the framing in D23–D25 that the corrected model's
 remaining weaknesses were architecture/objective findings.** They were
@@ -7206,7 +7209,7 @@ training-budget findings.
 ### D26.1 The arithmetic
 
 ```text
-acceptance run  overfit_fixed: 3923 steps x batch 16 =  62,768 samples
+acceptance run  overfit_fixed : 3923 steps x batch 16 =  62,768 samples
                                  over 500 rows        = 125.5 EPOCHS
                                  -> LABEL 91.29 % (scorer 92.38 %, regression 92.40 %)
 
@@ -7278,19 +7281,19 @@ drop --resume to start fresh.
 ### D26.5 V24 specification
 
 ```text
-trainer: src/c4/train.py, corrected per-ply indexing (shipped fix)
-seed: 32 (canonical)
-data: runs/_probe/perply_v23_full/corpus_320k_fixed.txt (320,000 rows)
-sidecar: runs/_probe/perply_v23_full/merged_repaired.npz
-ctx / batch: 192 / 16
-flags: --max-legacy-frac 0 --table-bias 0.0 --hard-start 0
+trainer      : src/c4/train.py, corrected per-ply indexing (shipped fix)
+seed         : 32 (canonical)
+data         : runs/_probe/perply_v23_full/corpus_320k_fixed.txt (320,000 rows)
+sidecar      : runs/_probe/perply_v23_full/merged_repaired.npz
+ctx / batch  : 192 / 16
+flags        : --max-legacy-frac 0 --table-bias 0.0 --hard-start 0
                --selfplay-games 0 --teacher-games 0
-promotion: direct per-ply label agreement (primary), byte-bpb tie-break
-steps: 100,000 (5 epochs, ~37 h) or 200,000 (10 epochs, ~73 h)
-eval cadence: raise from 500 (hard export + 4,000-position scoring is a
+promotion    : direct per-ply label agreement (primary), byte-bpb tie-break
+steps        : 100,000 (5 epochs, ~37 h) or 200,000 (10 epochs, ~73 h)
+eval cadence : raise from 500 (hard export + 4,000-position scoring is a
                large share of the measured 1.316 s/step)
-ladder: --eval-games 24 (the launcher's 0 produced vacuous W0L0D0)
-resume: from <run>/final_float.pt (carries {"state":...}, meta.step)
+ladder       : --eval-games 24 (the launcher's 0 produced vacuous W0L0D0)
+resume       : from <run>/final_float.pt (carries {"state":...}, meta.step)
 ```
 
 ### D26.6 Battery hardening (three real defects, found by running it end-to-end)
@@ -7315,16 +7318,16 @@ Battery order corrected: the cheap bounded shipped scorer runs first and
 its exit code is checked; the memory-heavy generic scanner runs last as
 an independent cross-check.
 
-### D26.7 `wait_and_eval` failure at  is superseded
+### D26.7 `wait_and_eval` failure at 17:12 is superseded
 
 ```text
 proc_1a6669f1af4f:
   BATTERY_EXIT=1
-  ARM NOT USABLE  fx_a_s6000: missing/empty runs/_probe/fx_a_s6000/best_hard.pt
+  ARM NOT USABLE  fx_a_s6000 : missing/empty runs/_probe/fx_a_s6000/best_hard.pt
 ```
 
-That run's log is timestamped ****; the `checkpoints/best_hard.pt`
-path fix landed at ****. The failure predates the fix and is a
+That run's log is timestamped **17:12:34**; the `checkpoints/best_hard.pt`
+path fix landed at **17:17:08**. The failure predates the fix and is a
 superseded orchestration defect, not an arm failure. All three corrected
 arms completed at step 6000 with transcript-v2 artifacts and a promoted
 `checkpoints/best_hard.pt`.
@@ -7391,7 +7394,7 @@ resume. Drop --lags to take the checkpoint's own set.
 
 `src/gf256_markov_lm_v6.py` has no `import_hard` method, so the hard
 branch of the resume path raised `AttributeError` before training a
-single step. The resume now prefers the float `{"state":...}` payload
+single step. The resume now prefers the float `{"state": ...}` payload
 and only falls back to the integer export.
 
 Together these mean **no resume of any kind had ever succeeded** — every
@@ -7435,12 +7438,12 @@ cannot be resumed after a crash is not a safe thing to start.
 
 ---
 
-## Appendix D28 — External review, applied: the pre-launch package
+## Appendix D28 — The external review, applied: the pre-launch package
 
-**Snapshot:** before the midnight V24 launch
+**Date:** 2026-10-28 (evening, before the midnight V24 launch)
 **Status:** V24 pre-flight complete. Not yet launched.
 
-### D28.1 What the review got right, and what I checked rather than believed
+### D28.1 What the external review got right, and what I checked rather than believed
 
 An external reviewer sent a review of the trainer with five substantive claims. Each was
 checked against the **shipped** code, not against a description of it.
@@ -7635,7 +7638,7 @@ signal and as an abort input.
   trajectory, seat, artifact, restoration) must pass on the converged
   model before any release claim.
 
-## Appendix D29 — The rotating live-parity failures, and a green sweep 
+## Appendix D29 — The rotating live-parity failures, and a green sweep (2026-10-29)
 
 ### What was wrong
 
@@ -7671,7 +7674,7 @@ causes were separated by measurement:
 3. **Orphan processes (the actual cause of the rotation).** At the worst
    sweep four stale `.venv-c4` processes were alive, one of them a
    `post_train_eval.sh` loop that had been re-running a full-corpus
-   `measure_label_agreement.py` scan since — roughly five hours of
+   `measure_label_agreement.py` scan since 20:25 — roughly five hours of
    continuous CPU contention.
 
    *Fix:* killed the orphans; `post_train_eval.sh` now runs under a
@@ -7715,7 +7718,7 @@ authoritative scorer reporting `LABEL 34.17 %` at step 40 versus
 A timing-sensitive test result measured on a loaded machine is not
 evidence. Check the process table before believing one.
 
-## Appendix D30 — Concurrent-sweep root cause and the transient Windows start failure (later)
+## Appendix D30 — Concurrent-sweep root cause and the transient Windows start failure (2026-10-29, later)
 
 ### Three sweeps ran at once
 
@@ -7776,7 +7779,7 @@ Do not clear the sweep lock from outside. Let stale-lock detection handle
 a dead predecessor, and never run two sweeps at once — the live-parity
 tests share one UI server and one board.
 
-## Appendix D31 — V24 launched; watcher-suite process leak found and fixed 
+## Appendix D31 — V24 launched; watcher-suite process leak found and fixed (2026-10-29 02:34)
 
 ### The launch
 
@@ -7786,7 +7789,7 @@ run dir:     runs/_probe/v24/
 trainer:     runs/_probe/v24.log
 chain:       runs/_probe/v24_chain.log
 watcher:     runs/_probe/v24_play.log
-UI:          http://127.0.0.60/   (hot-reloads on promotion)
+UI:          http://127.0.0.1:7860/   (hot-reloads on promotion)
 config:      100,000 steps (5.00 epoch-equivalents), batch 16, ctx 192,
              seed 32, transcript v2, dense lags, --max-legacy-frac 0,
              --table-bias 0.0, --hard-start 0, eval/save every 2,000,
@@ -7815,7 +7818,7 @@ regression suite: 24 `play_v24.sh` bash processes and their `ui_server`
 children, holding **1107 CPU-seconds** and **1.2 GB RSS**.
 
 Root cause: `tmp/test_play_v24_watcher.py` cleaned up with
-`watcher.terminate` plus a PowerShell sweep matching only
+`watcher.terminate()` plus a PowerShell sweep matching only
 `*ui_server*`. On Windows, terminating an MSYS bash does not reliably
 run the script's `EXIT` trap, so the watcher shell survived every run.
 
@@ -7828,7 +7831,7 @@ Two fixes:
 - **Reclamation** — new `tmp/cleanup_leaked_watchers.py`. It protects
   the live chain by **socket ownership** (find the listener on 7860,
   protect its ancestor chain, kill the rest). It refuses to run if no
-  live server is found. Deliberately NOT using `environ`: psutil
+  live server is found. Deliberately NOT using `environ()`: psutil
   returns `None` for `V24_TAG` on these MSYS bash processes, and a
   cmdline grep matches the cleanup script's own command line.
 
@@ -7836,7 +7839,7 @@ Two fixes:
 
 The plan quoted **0.650 s/step / 18.1 h**, measured while the machine was
 contended. On the cleaned machine the measured rate is **0.4415 s/step**
--> **12.3 h**, finishing around ****. The old figure was honest for
+-> **12.3 h**, finishing around **14:50**. The old figure was honest for
 the machine it was measured on; it is simply not this run's figure.
 
 Progress so far:
@@ -7871,7 +7874,7 @@ tracking the corrected curve.
 - Do not clear `runs/_probe/.v24.lock` with `rm -rf`.
 - If the UI stops answering on 7860, check the trainer first.
 
-## Appendix D32 — disk-pressure triage during the V24 launch 
+## Appendix D32 — disk-pressure triage during the V24 launch (2026-10-29)
 
 ### Symptom
 
@@ -7928,17 +7931,17 @@ scratch behind while it is live, and do not run the full sweep
 repeatedly.
 
 
-## Appendix D33 — host sleep during the V24 run 
+## Appendix D33 — host sleep during the V24 run (2026-10-29 04:47 → 05:58)
 
 ### What happened
 
 ```text
-  step 18000 logged
-  Kernel-Power id 42   (sleep REQUEST)
-  Kernel-Power id 107  (resume request acknowledged)
-  Power-Troubleshooter id 1  <- ACTUAL wake
-     live step counter = 19439
-  step 20000 logged (t 12768s)
+04:41:25  step 18000 logged
+04:47:10  Kernel-Power id 42   (sleep REQUEST)
+04:47:16  Kernel-Power id 107  (resume request acknowledged)
+05:58:14  Power-Troubleshooter id 1  <- ACTUAL wake
+06:01     live step counter = 19439
+06:06:34  step 20000 logged (t 12768s)
 ```
 
 **The host was asleep ~71 minutes.** Kernel-Power 42/107 records only the
@@ -7950,9 +7953,9 @@ time. Reading 42/107 alone would have produced a wrong diagnosis.
 
 | Check | Result |
 |---|---|
-| trainer worker pid 42856 | alive since  |
+| trainer worker pid 42856 | alive since 02:33:43 |
 | py-spy stack | `build_batch` / `_weighted_move_loss` — training, not hung |
-| live step counter | 19439 at, 20100 at  |
+| live step counter | 19439 at 06:01, 20100 at 06:07 |
 | instantaneous rate | 0.395 s/step (normal: 0.419–0.438) |
 | GPU | 92 %, 408 W |
 | all 8 checkpoints | load cleanly, correct `meta.step`, intact `opt_state`/`rng_state` |
@@ -7967,8 +7970,8 @@ normally. The 18000 → 20000 cycle took 5109 s wall-clock because the
 sleep was inside it.
 
 ```text
-overall for the span: 2.55 s/step   (sleep included)
-instantaneous, awake: 0.395 s/step  (normal)
+overall for the span : 2.55 s/step   (sleep included)
+instantaneous, awake  : 0.395 s/step  (normal)
 ```
 
 ### Two numbers to be careful about
@@ -7984,7 +7987,7 @@ instantaneous, awake: 0.395 s/step  (normal)
 ### Revised ETA
 
 80,000 steps remain at ~0.42 s/step of *awake* time = **~9.3 h**,
-finishing around **** (not ~ from raw wall-clock).
+finishing around **15:30** (not ~16:40 from raw wall-clock).
 
 ### Tooling change
 
@@ -8000,7 +8003,7 @@ process exists, but only this shows it is *advancing*.
 
 The watchdog `54e457966d02` was rewritten to use it, and to consult
 Power-Troubleshooter before declaring a stall. Its previous version last
-fired at, before the sleep, so it never saw the gap — the new
+fired at 04:07, before the sleep, so it never saw the gap — the new
 version cannot confuse "host slept" with "run died".
 
 ### Operational rule

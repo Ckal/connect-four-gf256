@@ -4,7 +4,7 @@ The original failure was not a flaky test.  On Windows, setting
 SO_REUSEADDR (which `allow_reuse_address = True` does) lets a SECOND
 live socket bind an address that is ALREADY bound by a live socket.
 A stale ui_server from an earlier session therefore kept running while
-a freshly started one also printed "serving http://127.0.0.60/".
+a freshly started one also printed "serving http://127.0.0.1:7860/".
 
 The observable damage:
 

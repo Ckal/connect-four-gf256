@@ -1,6 +1,6 @@
 # Connect Four — the whole thing, in one page
 
-**Snapshot:** current revision
+**Date:** 26 Oct 2026 (night) · **Folder:** `<repo>`
 
 > **Note:** §1 and §7 describe the *early* project (V10/V11 era). Three
 > more serious bugs were found after that and are the real story — see
@@ -34,10 +34,10 @@ scores each of the 7 columns. **This one doesn't.** It has no idea what a board 
 It only knows how to predict the next letter of text. That's the whole trick:
 
 ```
-  X X X....
-.. O O...
-... X...
-.......
+  X X X . . . .
+  . . O O . . .
+  . . . X . . .
+  . . . . . . .
 
   -->  heights ABCDEFG, turn=X, last=G  -->  predicts one letter A..G
 ```
@@ -228,7 +228,7 @@ smarter model.
 
 **The game:** 7 columns, drop a disc, four in a row wins. Simple rules, hard to play well.
 
-**The UI:** a web page at `http://127.0.0.60/`
+**The UI:** a web page at `http://127.0.0.1:7860/`
 - A 7×6 board you click to drop your disc (yellow `O`).
 - The model's discs are red `X`.
 - It shows the board **before** your decision, the **predicted next board**, and the
@@ -240,14 +240,14 @@ smarter model.
   During **its own** turn it separately shows *"Model picked"* — the actual move the
   hard-coded arithmetic path chose. Those two can differ, and showing both is honest.
 
-**The trainer view:** `http://127.0.0.61/` shows the loss curve and the games being
+**The trainer view:** `http://127.0.0.1:7861/` shows the loss curve and the games being
 processed, so training isn't a black box.
 
 ---
 
 ## 9. Right now, honestly
 
-> **THIS SECTION WAS REWRITTEN.** The text it replaces
+> **THIS SECTION WAS REWRITTEN 26 October 2026.** The text it replaces
 > described a step-5,000 checkpoint, a crashed trainer, and a "2–3 hours
 > to a candidate" plan. **All of that is obsolete.** The project moved on
 > considerably: the three bugs in §7 are long fixed, and the code has been
@@ -258,7 +258,7 @@ processed, so training isn't a black box.
 **Is there a good model to play against? Still no — and we now know
 exactly why.**
 
-The honest summary as of the night of:
+The honest summary as of the night of 26 October 2026:
 
 - **The real bug was that the shipped program could not see the board.**
   Not "played badly" — *could not see*. The file we saved and served was

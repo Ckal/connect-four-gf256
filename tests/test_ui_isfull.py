@@ -1,6 +1,6 @@
 """SUPERSEDED -- do not run this file.
 
-Replaced by ``tests/test_ui_isfull_v2.py``.
+Replaced by ``tmp/test_ui_isfull_v2.py`` on 2026-10-28.
 
 The original version of this test drove the human to play column 7 four
 times in a row and asserted the game stayed ongoing. That premise is

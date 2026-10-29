@@ -180,7 +180,7 @@ finally:
     # trap, and the PowerShell sweep only matched `*ui_server*`, never the
     # `play_v24.sh` bash.
     #
-    # Measured consequence: 24 leaked watcher/UI processes
+    # Measured consequence on 2026-10-29: 24 leaked watcher/UI processes
     # survived the watcher regression suite, holding 1107 CPU-seconds and
     # 1.2 GB RSS -- enough contention to make an 18-hour training run and
     # the live-parity tests flaky. So kill the tree explicitly.
