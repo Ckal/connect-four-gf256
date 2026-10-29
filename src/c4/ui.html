@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect Four &mdash; GF(256) Markov LM</title>
+<style>
+  :root {
+    --bg: #12141a;
+    --panel: #1b1f28;
+    --edge: #2b3140;
+    --fg: #e7eaf0;
+    --muted: #8b93a7;
+    --user: #e0a33e;
+    --ai: #4f8ef7;
+    --win: #43d17c;
+    --cell-empty: #232833;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 16px 48px;
+    background: var(--bg); color: var(--fg);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 { font-size: 20px; font-weight: 620; margin: 0 0 2px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; text-align: center; }
+  .sub code { background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(7, 58px);
+    grid-auto-rows: 58px;
+    gap: 5px;
+    background: var(--edge);
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.45);
+  }
+  .cell {
+    border-radius: 50%;
+    background: var(--cell-empty);
+    border: none; padding: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .09s ease, filter .09s ease;
+    box-shadow: inset 0 -2px 5px rgba(0,0,0,.32);
+  }
+  .cell.playable { cursor: pointer; }
+  .cell.playable:hover { filter: brightness(1.35); transform: scale(1.06); }
+  .cell:not(.playable) { cursor: not-allowed; }
+  .cell .disc { width: 78%; height: 78%; border-radius: 50%; opacity: 0; transition: opacity .12s; }
+  .cell.p1 .disc { background: var(--user); opacity: 1; box-shadow: inset 0 -3px 6px rgba(0,0,0,.3); }
+  .cell.p2 .disc { background: var(--ai);   opacity: 1; box-shadow: inset 0 -3px 6px rgba(0,0,0,.3); }
+  .cell.last .disc { outline: 2px solid #fff; outline-offset: -3px; }
+  .cell.winning .disc { outline: 3px solid var(--win); outline-offset: -2px; }
+
+  #status {
+    margin-top: 20px; font-size: 16px; font-weight: 560; min-height: 24px;
+    text-align: center;
+  }
+  #header {
+    margin-bottom: 10px; font-size: 13px; color: var(--muted); text-align: center;
+  }
+  #status.win  { color: var(--win); }
+  #status.lose { color: #f2607a; }
+  #status.busy { color: var(--muted); font-weight: 450; }
+  #detail { margin-top: 6px; color: var(--muted); font-size: 12.5px; text-align: center; min-height: 18px; }
+
+  .controls { margin-top: 24px; display: flex; gap: 10px; align-items: center; }
+  button.act {
+    background: var(--panel); color: var(--fg);
+    border: 1px solid var(--edge); border-radius: 8px;
+    padding: 9px 18px; font-size: 14px; font-weight: 560; cursor: pointer;
+  }
+  button.act:hover { border-color: #3d465c; }
+  button.act:disabled { opacity: .45; cursor: not-allowed; }
+  .legend { display: flex; gap: 16px; margin-top: 22px; font-size: 12.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+
+  /* ---- probability distribution panel -------------------------------- */
+  #probs {
+    margin-top: 22px; padding: 14px 16px 12px;
+    background: var(--panel); border: 1px solid var(--edge);
+    border-radius: 10px; min-width: 460px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.30);
+  }
+  #probs .title {
+    display: flex; justify-content: space-between; align-items: baseline;
+    color: var(--muted); font-size: 12.5px; margin-bottom: 8px;
+  }
+  #probs .title b { color: var(--fg); font-weight: 620; }
+  #probs .picks {
+    display: grid; grid-template-columns: 36px 1fr 64px;
+    column-gap: 10px; align-items: center; row-gap: 5px;
+  }
+  #probs .picks .col-label {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    text-align: center; color: var(--muted);
+  }
+  #probs .picks .bar-cell {
+    position: relative; height: 18px; background: #15181f;
+    border-radius: 4px; overflow: hidden;
+  }
+  #probs .picks .bar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--ai) 0%, var(--user) 100%);
+    transition: width .18s ease;
+  }
+  #probs .picks .bar.picked { box-shadow: inset 0 0 0 2px var(--win); }
+  #probs .picks .bar.illegal { background: #2a2f3b; }
+  #probs .picks .pct {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px;
+    color: var(--fg); text-align: right;
+  }
+  #probs .row.disabled { opacity: .25; }
+  #probs .legend-row {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 11.5px; color: var(--muted); margin-top: 10px;
+  }
+  #probs .legend-row b { color: var(--fg); font-weight: 600; }
+  #probs .note {
+    margin-top: 14px; padding: 10px 12px;
+    border: 1px solid var(--edge); border-radius: 8px;
+    background: rgba(127,127,127,0.06);
+    font-size: 11.8px; line-height: 1.55; color: var(--muted);
+  }
+  #probs .note b { color: var(--fg); font-weight: 600; }
+  #probs .note code {
+    font-size: 11px; padding: 1px 4px; border-radius: 4px;
+    background: rgba(127,127,127,0.14);
+  }
+  #probs .dist { padding-bottom: 12px; }
+  #probs .dist + .dist { padding-top: 12px; border-top: 1px solid var(--edge); }
+  #probs .dist:last-child { padding-bottom: 0; }
+  #probs .dist .title { margin-bottom: 7px; }
+  #probs .dist .title > span:first-child { color: var(--fg); font-weight: 600; }
+
+  /* ---- seat selector ------------------------------------------------ */
+  #seatbar { margin: -6px 0 16px; }
+  button.act.seatbtn { padding: 6px 14px; font-size: 12.5px; }
+  button.act.seatbtn.active {
+    border-color: var(--user); color: var(--fg);
+    box-shadow: inset 0 0 0 1px var(--user);
+  }
+
+  /* ---- pattern panel ------------------------------------------------ */
+  #patterns {
+    margin-top: 18px; padding: 14px 16px 12px;
+    background: var(--panel); border: 1px solid var(--edge);
+    border-radius: 10px; min-width: 460px; text-align: left;
+  }
+  #patterns .title {
+    display: flex; justify-content: space-between; align-items: baseline;
+    color: var(--muted); font-size: 12.5px; margin-bottom: 9px;
+  }
+  #patterns .title span:last-child { color: var(--fg); font-weight: 600; }
+  #patBody .pat {
+    display: flex; gap: 9px; align-items: flex-start;
+    padding: 6px 0; border-top: 1px solid var(--edge);
+    font-size: 13px; line-height: 1.45;
+  }
+  #patBody .pat:first-child { border-top: none; }
+  #patBody .pat .who {
+    flex: 0 0 62px; font-weight: 650; font-size: 12px;
+    padding-top: 1px;
+  }
+  #patBody .pat.who-p1 .who { color: var(--user); }
+  #patBody .pat.who-p2 .who { color: var(--ai); }
+  #patBody .pat .what { flex: 1; color: var(--fg); }
+  #patBody .pat .what .tag {
+    display: inline-block; border-radius: 4px; padding: 0 5px;
+    font-size: 11px; font-weight: 650; margin-right: 5px;
+    background: #2a2f3b; color: var(--muted);
+  }
+  #patBody .pat .what .tag.win  { background: rgba(67,209,124,.18); color: var(--win); }
+  #patBody .pat .what .tag.threat { background: rgba(240,160,60,.18); color: #f0a03c; }
+  #patBody .pat .what .tag.dead  { background: rgba(240,96,122,.16); color: #f2607a; }
+  #patBody .pat .what .muted { color: var(--muted); }
+  #patBody .pat .what code {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+    background: #15181f; padding: 1px 4px; border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+  <h1>Connect Four</h1>
+  <div class="sub" id="sub">You play <b style="color:var(--user)">gold</b> (P1) · the model plays <b style="color:var(--ai)">blue</b> (P2)<br>
+    <code>GF(256) Markov LM · integer forward pass · greedy</code></div>
+
+  <div id="header"></div>
+
+  <div class="controls" id="seatbar">
+    <button class="act seatbtn" id="seat1" onclick="setSeat(1)">Play 1st (gold)</button>
+    <button class="act seatbtn" id="seat2" onclick="setSeat(2)">Play 2nd (blue)</button>
+  </div>
+
+  <div id="board" role="grid" aria-label="Connect four board"></div>
+
+  <div id="status">Your move &mdash; pick a column</div>
+  <div id="detail"></div>
+
+  <div class="controls">
+    <button class="act" id="reset" onclick="resetGame()">New game</button>
+    <button class="act" id="undo" onclick="undoMove()">Take back</button>
+  </div>
+
+  <div id="probs" hidden>
+    <div class="dist" id="probsNextDist">
+      <div class="title">
+        <span>Model's next-move distribution</span>
+        <span id="probsNextHead"></span>
+      </div>
+      <div class="picks" id="probsNextGrid"></div>
+      <div class="legend-row" id="probsNextLegend"></div>
+    </div>
+    <div class="dist" id="probsDecDist">
+      <div class="title">
+        <span>Model's distribution when it chose</span>
+        <span id="probsDecHead"></span>
+      </div>
+      <div class="picks" id="probsDecGrid"></div>
+      <div class="legend-row" id="probsDecLegend"></div>
+    </div>
+    <div class="note">
+      <b>These percentages are not a winning chance.</b>
+      Each number is the model's preference weight for one column
+      (<code>softmax(hard_forward)</code>), i.e. how the probability mass is
+      split across the legal columns &mdash; not an estimate of who wins the
+      game. A <b>100%</b> simply means the model put all its weight on one
+      column (this normally happens when only one column is legal); it does
+      <b>not</b> mean a certain win. <code>100%</code> can also appear while
+      the position is lost. To judge the game, read the
+      <b>What is on the board</b> panel below &mdash; that one is physical
+      board truth, not a model opinion.
+    </div>
+  </div>
+
+  <div id="patterns" hidden>
+    <div class="title"><span>What is on the board</span><span id="patHead"></span></div>
+    <div id="patBody"></div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--user)"></i>You</span>
+    <span><i style="background:var(--ai)"></i>Model</span>
+    <span><i style="background:var(--win)"></i>Winning four</span>
+  </div>
+
+<script>
+const COLS = 7, ROWS = 6;
+// Human-readable column letters. Logical row 0 is the BOTTOM of the board;
+// the grid renders top-down, so DOM row (ROWS - 1 - r) is the visual row.
+const COL_LETTERS = ["A", "B", "C", "D", "E", "F", "G"];
+let state = null;      // last snapshot from the server
+let busy = false;
+
+// ---- build the empty grid once -------------------------------------------
+// cells come from the server bottom-up: cells[0] is the BOTTOM row.
+// The grid renders top-down, so cell (r,c) goes at DOM row ROWS-1-r.
+const boardEl = document.getElementById("board");
+const cellEls = [];
+for (let r = 0; r < ROWS; r++) {
+  cellEls.push([]);
+  for (let c = 0; c < COLS; c++) {
+    const el = document.createElement("button");
+    el.className = "cell";
+    el.dataset.row = r; el.dataset.col = c;
+    const disc = document.createElement("span");
+    disc.className = "disc";           // static markup, no innerHTML
+    el.appendChild(disc);
+    el.addEventListener("click", () => onCellClick(c));
+    boardEl.appendChild(el);
+    cellEls[r].push(el);
+  }
+}
+
+function render() {
+  if (!state) return;
+  const { cells, outcome, valid_actions, your_move, ai_move } = state;
+
+  // board.py encodes: EMPTY=0, P1=1 (you, gold), P2=2 (model, blue)
+  // Server sends cells bottom-up: cells[0] is the row discs land on.
+  // The DOM grid paints top-down, so flip r here -- otherwise the
+  // whole board renders upside down.
+  const lastIdx = (state.moves || []).length - 1;
+  for (let r = 0; r < ROWS; r++) {
+    const domRow = ROWS - 1 - r;
+    for (let c = 0; c < COLS; c++) {
+      const el = cellEls[domRow][c];
+      const v = cells[r][c];
+      // Rebuild the class set from scratch: which disc, is it the last, is it
+      // part of the winning line.
+      const classes = ["cell"];
+      if (v === 1) classes.push("p1");
+      else if (v === 2) classes.push("p2");
+      // Turns alternate, so the k-th disc dropped into ANY column was played
+      // on ply 2k (user) or 2k+1 (model). r == k, the disc's height.
+      const plyOf = 2 * r + (v === 2 ? 1 : 0);
+      if (v !== 0 && plyOf === lastIdx) classes.push("last");
+      el.className = classes.join(" ");
+      // playable = column is open AND it is your turn AND game is live
+      const open = valid_actions.includes(c);
+      const yours = state.turn === "user";
+      const live = outcome === "ongoing";
+      el.classList.toggle("playable", open && yours && live && !busy);
+    }
+  }
+
+  // Compute and stamp the winning four BEFORE highlightWin overwrites it.
+  // P1=1 (you), P2=2 (model). winMap maps outcome -> disc value to hunt.
+  const winMap = { you_win: 1, ai_win: 2 };
+  const winningCells = new Set();
+  if (outcome in winMap) {
+    const tgt = winMap[outcome];
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (cells[r][c] !== tgt) continue;
+        for (const [dr, dc] of dirs) {
+          let ok = true;
+          for (let k = 0; k < 4; k++) {
+            const rr = r + dr*k, cc = c + dc*k;
+            if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) { ok = false; break; }
+            if (cells[rr][cc] !== tgt) { ok = false; break; }
+          }
+          if (ok) for (let k = 0; k < 4; k++) winningCells.add(`${r+dr*k},${c+dc*k}`);
+        }
+      }
+    }
+    winningCells.forEach(k => {
+      const [r, c] = k.split(",").map(Number);
+      cellEls[ROWS - 1 - r][c].classList.add("winning");
+    });
+  }
+
+  // Header line: model name + last generation time
+  const headerEl = document.getElementById("header");
+  const bits = [];
+  if (state.model) bits.push(`model <b>${state.model}</b>`);
+  if (state.last_gen_ms != null && state.last_gen_ms > 0)
+    bits.push(`last reply <b>${state.last_gen_ms} ms</b>`);
+  // Build the header line with DOM nodes only (no innerHTML).
+  while (headerEl.firstChild) headerEl.removeChild(headerEl.firstChild);
+  bits.forEach((bitHtml, i) => {
+    if (i > 0) headerEl.appendChild(document.createTextNode(" \u00b7 "));
+    // Each bit is "<label> <b>value</b>"; parse it into text + <b>.
+    const m = bitHtml.match(/^(.*?)\s*<b>(.*)<\/b>$/);
+    if (m) {
+      headerEl.appendChild(document.createTextNode(m[1] + " "));
+      const b = document.createElement("b");
+      b.textContent = m[2];
+      headerEl.appendChild(b);
+    } else {
+      headerEl.appendChild(document.createTextNode(bitHtml));
+    }
+  });
+
+  const st = document.getElementById("status");
+  const det = document.getElementById("detail");
+  st.className = "";
+  if (outcome === "you_win")      { st.textContent = "🎉 You win.";            st.className = "win"; }
+  else if (outcome === "ai_win")   { st.textContent = "🤖 The model wins.";     st.className = "lose"; }
+  else if (outcome === "draw")     { st.textContent = "🤝 Draw.";                st.className = ""; }
+  else if (busy)                   { st.textContent = "Model is thinking\u2026"; st.className = "busy"; }
+  else if (state.turn === "user")  { st.textContent = "Your move — pick a column"; }
+  else                              { st.textContent = "Model to move\u2026";     st.className = "busy"; }
+
+  if (ai_move !== null && ai_move !== undefined) {
+    det.textContent = "Model played column " + COL_LETTERS[ai_move];
+  } else { det.textContent = ""; }
+
+  // Seat buttons reflect the current seat.
+  const s1 = document.getElementById("seat1");
+  const s2 = document.getElementById("seat2");
+  if (s1 && s2) {
+    s1.classList.toggle("active", state.user_seat === 1);
+    s2.classList.toggle("active", state.user_seat === 2);
+  }
+  // The subtitle says which colour you play, so it must follow the seat.
+  const subEl = document.getElementById("sub");
+  if (subEl) {
+    const youP1 = state.user_seat === 1;
+    while (subEl.firstChild) subEl.removeChild(subEl.firstChild);
+    const b1 = document.createElement("b");
+    b1.style.color = "var(--user)";
+    b1.textContent = youP1 ? "gold" : "blue";
+    const b2 = document.createElement("b");
+    b2.style.color = "var(--ai)";
+    b2.textContent = youP1 ? "blue" : "gold";
+    subEl.appendChild(document.createTextNode("You play "));
+    subEl.appendChild(b1);
+    subEl.appendChild(document.createTextNode(" · the model plays "));
+    subEl.appendChild(b2);
+    subEl.appendChild(document.createElement("br"));
+    const code = document.createElement("code");
+    code.textContent = "GF(256) Markov LM · integer forward pass · greedy";
+    subEl.appendChild(code);
+  }
+
+  renderProbs();
+  renderPatterns();
+}
+
+// ---- probability distribution renderer ---------------------------------
+//
+// THE DISTINCTION THAT MATTERS
+// -----------------------------
+// Two different boards, two different distributions, and conflating them is
+// what produced the "the panel said column A but it played column B" bug:
+//
+//   DECISION  -- the board the model looked at when it chose its move.
+//                The model's move is the argmax of THIS row.
+//   ADVICE    -- the board as it stands NOW. This is the model's opinion
+//                about the NEXT move (usually the human's).
+//
+// The old code showed ADVICE but labelled it "the move it actually played".
+// The fix: keep them in separate fields, label them explicitly, and never
+// describe one as the other.
+function renderProbs() {
+  const panel = document.getElementById("probs");
+  if (!state || state.outcome !== "ongoing") { panel.hidden = true; return; }
+
+  const dec    = state.last_decision;
+  const advice = state.user_advice;
+  const modelJustMoved = !!(dec && dec.played !== undefined && dec.played !== null);
+
+  // The NEXT-MOVE row is the primary panel: it is the model's opinion about
+  // the position as it stands right now. The DECISION row is the secondary
+  // one: it is the distribution the model actually chose from. Both are
+  // shown, labelled, and never conflated.
+  const nextSrc = advice || state.probs;
+  const decSrc  = dec;
+
+  if (!nextSrc && !decSrc) { panel.hidden = true; return; }
+  panel.hidden = false;
+
+  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+  function drawGrid(gridEl, src, played) {
+    clear(gridEl);
+    const legal = src.legal || [];
+    const hard  = src.hard_cols;
+    const cols  = (hard && hard.some(v => v > 0)) ? hard : (src.cols || []);
+    const legalCols = legal.length ? legal : [1,1,1,1,1,1,1];
+    const max = Math.max(1e-9, ...cols.filter((_, i) => legalCols[i]));
+    for (let c = 0; c < 7; c++) {
+      const label = document.createElement("div");
+      label.className = "col-label";
+      label.textContent = COL_LETTERS[c];
+      gridEl.appendChild(label);
+
+      const barCell = document.createElement("div");
+      barCell.className = "bar-cell";
+      const bar = document.createElement("div");
+      bar.className = "bar" + (legalCols[c] ? "" : " illegal");
+      const pct = (cols[c] || 0) * 100;
+      bar.style.width = (legalCols[c] ? (cols[c] / max) * 100 : 100).toFixed(1) + "%";
+      if (played !== null && played !== undefined && played === c) bar.classList.add("picked");
+      barCell.appendChild(bar);
+      gridEl.appendChild(barCell);
+
+      const pctLabel = document.createElement("div");
+      pctLabel.className = "pct";
+      pctLabel.textContent = legalCols[c] ? pct.toFixed(1) + "%" : "\u2014";
+      gridEl.appendChild(pctLabel);
+    }
+    return cols;
+  }
+
+  function topOf(src, cols) {
+    const legal = (src.legal && src.legal.length) ? src.legal : [1,1,1,1,1,1,1];
+    let top = 0;
+    for (let i = 0; i < 7; i++) {
+      if (legal[i] && (!legal[top] || cols[i] > cols[top])) top = i;
+    }
+    return top;
+  }
+
+  function addLegend(el, parts) {
+    clear(el);
+    parts.forEach(([text, bold]) => {
+      const span = document.createElement("span");
+      if (bold) {
+        const b = document.createElement("b");
+        b.textContent = text;
+        span.appendChild(b);
+      } else {
+        span.appendChild(document.createTextNode(text));
+      }
+      el.appendChild(span);
+    });
+  }
+
+  const conf = (cols, c) => ((cols[c] || 0) * 100).toFixed(1) + "%";
+
+  // ---- NEXT-MOVE panel -------------------------------------------------
+  const nextGrid = document.getElementById("probsNextGrid");
+  const nextHead = document.getElementById("probsNextHead");
+  const nextLeg  = document.getElementById("probsNextLegend");
+  if (nextSrc) {
+    const cols = drawGrid(nextGrid, nextSrc, null);
+    const top = topOf(nextSrc, cols);
+    const legalArr = nextSrc.legal || [];
+    const nLegal = legalArr.filter(Boolean).length;
+    clear(nextHead);
+    const b = document.createElement("b");
+    b.textContent = "model would play column " + COL_LETTERS[top] + " \u00b7 " + conf(cols, top);
+    nextHead.appendChild(b);
+    const nextLegParts = [
+      ["Board as it stands now \u00b7 ", false],
+      ["softmax(hard_forward)", true],
+      [" \u2014 the integer path the model actually plays", false],
+    ];
+    if (nLegal <= 1) {
+      // A single legal column forces the softmax to a point mass, so the
+      // "100%" is an arithmetic fact about the masking, NOT a confidence
+      // signal and NOT a statement about who wins.
+      nextLegParts.push([" \u00b7 ", false]);
+      nextLegParts.push(["only one legal column", true]);
+      nextLegParts.push([" \u2014 the 100% is forced by the mask, "
+                       + "it says nothing about the game", false]);
+    }
+    if (nextSrc.soft_is_flat) {
+      // The float path on a V6 hard export was never trained (import_hard
+      // does not exist for V6), so column_logits() returns 0 for every
+      // column. Comparing its argmax with the hard argmax and printing
+      // "argmax agrees: no" compares a real model with a dead one. Say so
+      // instead of printing a meaningless disagreement.
+      nextLegParts.push([" \u00b7 float path: ", false]);
+      nextLegParts.push(["not trained on this checkpoint", true]);
+      nextLegParts.push([" (all logits 0.0)", false]);
+    }
+    addLegend(nextLeg, nextLegParts);
+  } else {
+    clear(nextGrid); clear(nextHead);
+    nextHead.textContent = "not available";
+    addLegend(nextLeg, []);
+  }
+
+  // ---- DECISION panel --------------------------------------------------
+  const decGrid = document.getElementById("probsDecGrid");
+  const decHead = document.getElementById("probsDecHead");
+  const decLeg  = document.getElementById("probsDecLegend");
+  if (decSrc) {
+    const played = decSrc.played;
+    const cols = drawGrid(decGrid, decSrc, played);
+    clear(decHead);
+    const b = document.createElement("b");
+    b.textContent = "played column " + COL_LETTERS[played] + " \u00b7 " + conf(cols, played);
+    decHead.appendChild(b);
+    addLegend(decLeg, [
+      ["The board the model looked at when it chose \u00b7 ", false],
+      ["green outline", true],
+      [" = the column actually played", false],
+    ]);
+  } else {
+    clear(decGrid); clear(decHead);
+    decHead.textContent = modelJustMoved ? "not available" : "no model move yet";
+    addLegend(decLeg, []);
+  }
+}
+
+// ---- pattern panel ------------------------------------------------------
+// Pure board truth: what is physically on the board right now. No model
+// opinions. This is the "I see no pattern" fix -- the threats are shown
+// explicitly, for both sides, in plain language.
+function renderPatterns() {
+  const panel = document.getElementById("patterns");
+  const body   = document.getElementById("patBody");
+  const head   = document.getElementById("patHead");
+  if (!state || !state.patterns || state.outcome !== "ongoing") {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+  while (body.firstChild) body.removeChild(body.firstChild);
+
+  const p = state.patterns;
+  const userIsP1 = state.user_seat === 1;
+  const rows = [];
+
+  function side(key, label) {
+    const s = p[key];
+    if (!s) return;
+    const bits = [];
+    if (s.complete_four) {
+      bits.push(["win", "FOUR", " four in a row — this side has won"]);
+    }
+    if (s.immediate_wins && s.immediate_wins.length) {
+      const cols = s.immediate_wins.map((c) => COL_LETTERS[c]).join(", ");
+      bits.push(["threat", "THREAT", ` can win this move in column ${cols}`]);
+    }
+    if (s.open_threes && s.open_threes.length) {
+      const t = s.open_threes.map((x) => x.label).join("; ");
+      bits.push(["threat", "3+1", ` open three: ${t}`]);
+    }
+    if (s.stacked_threes && s.stacked_threes.length) {
+      const t = s.stacked_threes.map((x) => x.label).join("; ");
+      bits.push(["", "3 stacked", ` needs support first: ${t}`]);
+    }
+    if (s.blocked_threes && s.blocked_threes.length) {
+      const t = s.blocked_threes.map((x) => x.label).join("; ");
+      bits.push(["dead", "3+1 blocked", ` dead line, opponent piece in the gap: ${t}`]);
+    }
+    if (!bits.length) {
+      bits.push(["", "—", " no three, no four, no immediate win"]);
+    }
+    rows.push({ key, label, bits });
+  }
+  side("p1", userIsP1 ? "You" : "Model");
+  side("p2", userIsP1 ? "Model" : "You");
+
+  let n = 0;
+  rows.forEach((r) => {
+    const div = document.createElement("div");
+    div.className = "pat who-" + r.key;
+    const who = document.createElement("div");
+    who.className = "who";
+    who.textContent = r.label;
+    div.appendChild(who);
+    const what = document.createElement("div");
+    what.className = "what";
+    r.bits.forEach(([cls, tag, text], i) => {
+      if (i > 0) what.appendChild(document.createTextNode(" "));
+      const s = document.createElement("span");
+      s.className = "tag " + cls;
+      s.textContent = tag;
+      what.appendChild(s);
+      what.appendChild(document.createTextNode(text));
+    });
+    div.appendChild(what);
+    body.appendChild(div);
+    n++;
+  });
+
+  // Headline: the single most important fact on the board.
+  const p1 = p.p1 || {}, p2 = p.p2 || {};
+  let headTxt = "nothing forced yet";
+  const youKey = userIsP1 ? "p1" : "p2";
+  const modelKey = userIsP1 ? "p2" : "p1";
+  const youW = p[youKey] && p[youKey].immediate_wins || [];
+  const mW = p[modelKey] && p[modelKey].immediate_wins || [];
+  if (mW.length) headTxt = "the model can win right now";
+  else if (youW.length) headTxt = "you can win right now";
+  head.textContent = headTxt;
+}
+
+async function post(path, body) {
+  const res = await fetch(path, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return await res.json();
+}
+
+async function onCellClick(col) {
+  if (busy || !state) return;
+  if (state.outcome !== "ongoing" || state.turn !== "user") return;
+  if (!state.valid_actions.includes(col)) return;
+  busy = true; render();
+  const out = await post("/move", { col });
+  if (out.error) {
+    document.getElementById("detail").textContent = out.error;
+  } else {
+    state = out;
+  }
+  busy = false; render();
+}
+
+async function resetGame() {
+  busy = true; render();
+  state = await post("/reset");
+  busy = false; render();
+}
+
+async function undoMove() {
+  busy = true; render();
+  const out = await post("/undo", {});
+  state = out.state || state;
+  busy = false; render();
+}
+
+async function setSeat(seat) {
+  if (busy || !state) return;
+  if (state.user_seat === seat) return;
+  busy = true; render();
+  const out = await post("/seat", { seat: seat });
+  if (out.error) {
+    document.getElementById("detail").textContent = out.error;
+  } else {
+    state = out;
+  }
+  busy = false; render();
+}
+
+// initial load
+post("/state").then(s => { state = s; render(); });
+</script>
+</body>
+</html>

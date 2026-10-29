@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training log &mdash; GF(256) Markov LM</title>
+<style>
+  :root {
+    --bg: #12141a;
+    --panel: #1b1f28;
+    --edge: #2b3140;
+    --fg: #e7eaf0;
+    --muted: #8b93a7;
+    --p1: #e0a33e;
+    --p2: #4f8ef7;
+    --win: #43d17c;
+    --cell-empty: #232833;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 48px;
+    background: var(--bg); color: var(--fg);
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 19px; font-weight: 620; margin: 0 0 2px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 18px; }
+  .sub code { background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size: 11.5px; }
+
+  .grid { display: grid; grid-template-columns: 288px minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 11px; padding: 14px; }
+  .card h2 {
+    font-size: 11px; font-weight: 640; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); margin: 0 0 10px;
+  }
+
+  /* ---- stats ---- */
+  .stat { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .stat + .stat { border-top: 1px solid rgba(43,49,64,.6); }
+  .stat b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat .k { color: var(--muted); }
+
+  /* ---- chart ---- */
+  #chart { width: 100%; height: 168px; display: block; }
+
+  /* ---- game list ---- */
+  .games { max-height: 560px; overflow-y: auto; }
+  .g {
+    padding: 7px 9px; border-radius: 7px; cursor: pointer; font-size: 12.5px;
+    display: flex; justify-content: space-between; gap: 8px; border: 1px solid transparent;
+  }
+  .g + .g { margin-top: 2px; }
+  .g:hover { background: rgba(255,255,255,.045); }
+  .g.sel { background: rgba(79,142,247,.14); border-color: rgba(79,142,247,.5); }
+  .g .s { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .g .o { font-weight: 560; white-space: nowrap; }
+  .o.win { color: var(--win); }
+  .o.loss { color: #e06c75; }
+  .o.draw { color: var(--muted); }
+
+  /* ---- board ---- */
+  #board {
+    display: grid; grid-template-columns: repeat(7, 42px); grid-auto-rows: 42px; gap: 4px;
+    background: var(--edge); padding: 6px; border-radius: 10px;
+    box-shadow: 0 8px 26px rgba(0,0,0,.4); width: max-content;
+  }
+  .cell { border-radius: 50%; background: var(--cell-empty); display: flex; align-items: center; justify-content: center; }
+  .cell .disc { width: 80%; height: 80%; border-radius: 50%; opacity: 0; transition: opacity .1s; }
+  .cell.p1 .disc { background: var(--p1); opacity: 1; box-shadow: inset 0 -3px 6px rgba(0,0,0,.3); }
+  .cell.p2 .disc { background: var(--p2); opacity: 1; box-shadow: inset 0 -3px 6px rgba(0,0,0,.3); }
+  .cell.last .disc { outline: 2px solid #fff; outline-offset: -3px; }
+
+  .coords { display: grid; grid-template-columns: repeat(7, 42px); gap: 4px; margin-top: 4px; color: var(--muted); font-size: 11px; text-align: center; }
+
+  #moveinfo { margin-top: 12px; font-size: 13.5px; min-height: 20px; }
+  #moveinfo .who { font-weight: 620; }
+  #moveinfo .who.model { color: var(--p1); }
+  #moveinfo .who.opp { color: var(--p2); }
+
+  .scrub { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .scrub button {
+    background: var(--panel); color: var(--fg); border: 1px solid var(--edge);
+    border-radius: 7px; padding: 5px 11px; cursor: pointer; font-size: 12.5px; font-family: inherit;
+  }
+  .scrub button:hover { border-color: #3d4557; }
+  .scrub input[type=range] { flex: 1; accent-color: #4f8ef7; }
+  #plylabel { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; min-width: 58px; text-align: right; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: right; padding: 5px 7px; border-bottom: 1px solid rgba(43,49,64,.65); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: rgba(255,255,255,.04); }
+  tbody tr.sel { background: rgba(79,142,247,.13); }
+  .up { color: var(--win); } .down { color: #e06c75; }
+
+  .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .dot.on { background: var(--win); box-shadow: 0 0 7px var(--win); animation: pulse 1.7s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  .err { color: #e06c75; font-size: 12.5px; }
+  .empty { color: var(--muted); font-size: 12.5px; padding: 14px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Training log</h1>
+  <div class="sub">
+    Live view of <code id="rundir">&hellip;</code> &mdash; boards are the actual games the model plays while it trains.
+    <span class="live" style="margin-left:10px"><span class="dot" id="dot"></span><span id="livetext">connecting&hellip;</span></span>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card" style="margin-bottom:18px">
+        <h2>Progress</h2>
+        <div class="stat"><span class="k">step</span><b id="s-step">&mdash;</b></div>
+        <div class="stat"><span class="k">corpus</span><b id="s-corpus">&mdash;</b></div>
+        <div class="stat"><span class="k">games logged</span><b id="s-games">&mdash;</b></div>
+        <div class="stat"><span class="k">updated</span><b id="s-age">&mdash;</b></div>
+      </div>
+
+      <div class="card">
+        <h2>Metric history</h2>
+        <table>
+          <thead><tr><th>step</th><th>bpb</th><th>acc</th><th>vs heur</th></tr></thead>
+          <tbody id="metrics"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:18px">
+        <h2>Current game <span id="glabel" style="float:right;text-transform:none;letter-spacing:0"></span></h2>
+        <div id="board"></div>
+        <div class="coords"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+        <div id="moveinfo"></div>
+        <div class="scrub">
+          <button id="prev">&larr;</button>
+          <input type="range" id="slider" min="0" max="0" value="0">
+          <button id="next">&rarr;</button>
+          <span id="plylabel">&mdash;</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Games this session</h2>
+        <div class="games" id="gamelist"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GLYPH = { '.': 0, 'X': 1, 'O': 2, 'x': 1, 'o': 2 };
+let state = null, selGame = null, selPly = 0;
+
+function el(id) { return document.getElementById(id); }
+
+function buildBoard() {
+  const b = el('board');
+  for (let i = 0; i < 42; i++) {
+    const c = document.createElement('div');
+    c.className = 'cell';
+    c.innerHTML = '<div class="disc"></div>';
+    b.appendChild(c);
+  }
+}
+buildBoard();
+
+function renderBoard(game, plyIdx) {
+  const ply = game && game.plies[plyIdx];
+  const cells = el('board').children;
+  for (let i = 0; i < 42; i++) cells[i].className = 'cell';
+  if (!ply) { el('moveinfo').textContent = 'no board'; return; }
+  const rows = ply.board || [];
+  for (let r = 0; r < 6 && r < rows.length; r++) {
+    const toks = rows[r].trim().split(/\s+/);
+    for (let c = 0; c < 7 && c < toks.length; c++) {
+      const v = GLYPH[toks[c]];
+      const idx = r * 7 + c;
+      if (v === 1 || v === 2) cells[idx].className = 'cell p' + v;
+      if (r === rows.length - 2 && toks[c] === toks[c].toLowerCase() && /[xo]/.test(toks[c])) {
+        cells[idx].className += ' last';
+      }
+    }
+  }
+  const isModel = ply.who && ply.who.toLowerCase().startsWith('model');
+  const info = el('moveinfo');
+  info.textContent = '';
+  const who = document.createElement('span');
+  who.className = 'who ' + (isModel ? 'model' : 'opp');
+  who.textContent = ply.who || '?';
+  info.appendChild(who);
+  if (ply.col !== null && ply.col !== undefined) info.append(' \u2192 column ' + ply.col);
+  if (ply.result) {
+    const b = document.createElement('b');
+    b.textContent = '   ' + ply.result;
+    info.appendChild(b);
+  }
+  el('plylabel').textContent = 'ply ' + ply.ply;
+  const sl = el('slider');
+  sl.max = Math.max(0, game.plies.length - 1);
+  sl.value = plyIdx;
+}
+
+function selGameIdx(i) {
+  const g = state.games[i];
+  selGame = i;
+  selPly = Math.max(0, g.plies.length - 1);
+  el('glabel').textContent = g.label;
+  renderBoard(g, selPly);
+  document.querySelectorAll('.g').forEach((n, k) => n.classList.toggle('sel', k === i));
+  document.querySelectorAll('#metrics tr').forEach((n, k) => n.classList.toggle('sel', k === i));
+}
+
+function outcomeClass(o) {
+  if (/WINS/i.test(o)) return /P1|model/i.test(o) ? 'win' : 'loss';
+  if (/draw|TIE/i.test(o)) return 'draw';
+  return '';
+}
+
+function renderList() {
+  const box = el('gamelist');
+  box.textContent = '';
+  if (!state.games.length) {
+    const e = document.createElement('div');
+    e.className = 'empty';
+    e.textContent = 'No games logged yet \u2014 snapshots are written at every eval.';
+    box.appendChild(e);
+    return;
+  }
+  state.games.forEach((g, i) => {
+    const row = document.createElement('div');
+    row.className = 'g';
+    row.dataset.i = i;
+    const s = document.createElement('span');
+    s.className = 's';
+    s.textContent = 'step ' + g.step;
+    const o = document.createElement('span');
+    o.className = 'o ' + outcomeClass(g.outcome || '');
+    o.textContent = (g.outcome || '').replace(/^P\d\s+/, '');
+    row.appendChild(s);
+    row.appendChild(o);
+    row.onclick = () => selGameIdx(i);
+    box.appendChild(row);
+  });
+}
+
+// Rows come from a local training log, but they are still built as text
+// nodes rather than HTML so no file content can ever be interpreted as markup.
+function renderMetrics() {
+  const ms = state.metrics.slice(-40);
+  const body = el('metrics');
+  body.textContent = '';
+  for (const m of ms) {
+    const heur = (m.vs_opp && m.vs_opp.heuristic) || {};
+    const htxt = heur.games !== undefined
+      ? heur.wins + 'W/' + heur.losses + 'L'
+      : '—';
+    const tr = document.createElement('tr');
+    const cells = [
+      m.step ?? '—',
+      (m.soft_bpb ?? '—').toString().slice(0, 5),
+      m.soft_acc !== undefined ? Math.round(m.soft_acc * 100) + '%' : '—',
+      htxt,
+    ];
+    for (const c of cells) {
+      const td = document.createElement('td');
+      td.textContent = c;
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+}
+
+async function tick() {
+  try {
+    const r = await fetch('/api/state', { cache: 'no-store' });
+    const d = await r.json();
+    state = d;
+    el('rundir').textContent = d.run_dir;
+    el('s-step').textContent = d.step ?? '—';
+    el('s-corpus').textContent = d.corpus_size ?? '—';
+    el('s-games').textContent = d.games.length;
+    el('s-age').textContent = new Date().toLocaleTimeString();
+    el('dot').className = 'dot on';
+    el('livetext').textContent = 'live · every 5s';
+
+    renderList();
+    renderMetrics();
+    if (state.games.length) {
+      const keep = selGame !== null && selGame < state.games.length;
+      const i = keep ? selGame : state.games.length - 1;
+      selGameIdx(i);
+    } else {
+      el('board').textContent = '';
+      buildBoard();
+      el('moveinfo').textContent = 'Waiting for the first snapshot\u2026';
+    }
+  } catch (e) {
+    el('dot').className = 'dot';
+    el('livetext').textContent = 'disconnected — retrying';
+  }
+}
+
+el('prev').onclick = () => { if (state && selGame !== null) { selPly = Math.max(0, selPly - 1); renderBoard(state.games[selGame], selPly); } };
+el('next').onclick = () => { if (state && selGame !== null) { selPly = Math.min(state.games[selGame].plies.length - 1, selPly + 1); renderBoard(state.games[selGame], selPly); } };
+el('slider').oninput = ev => { if (state && selGame !== null) { selPly = +ev.target.value; renderBoard(state.games[selGame], selPly); } };
+
+tick();
+setInterval(tick, 5000);
+</script>
+</body>
+</html>

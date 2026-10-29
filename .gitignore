@@ -1,0 +1,15 @@
+# probe / scratch — never published
+runs/
+*.npz
+*.log
+!runs/.gitkeep
+
+# local env
+.venv*/
+__pycache__/
+*.pyc
+
+# secrets
+.env
+*.key
+*.pem
