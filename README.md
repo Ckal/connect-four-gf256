@@ -15,7 +15,7 @@ Author: **Christof Ckal** · Project: ZeroFLops
 | **Supervision** | Every ply of every game labelled with the **set of optimal moves** from an exact solver. |
 | **Training data** | 320,000 games → 4,462,571 per-ply labels. |
 | **Result (teacher agreement)** | 16.3 % → **59.6 %** on train, 11.9 % → **41.0 %** on a board-disjoint holdout. |
-| **Result (game strength)** | Beats random **85.2 %**. **Loses to the centre-column policy (90.5 %)** and to a 1-ply heuristic (wins only 37.2 %) — both measured over 600 games per arm. |
+| **Result (game strength)** | Beats random **85.2 %**. **Beats the centre-column policy head-to-head (90.5 %)** yet scores **below** it against random (85.2 % vs. 91.0 %, p = 0.0024). **Loses to a 1-ply heuristic** (wins only 37.2 %). 600 games per arm. |
 | **The point** | Teacher-agreement and game strength are **different things**, and this repo shows it with two independent measurements. |
 | **Model size** | 32.3 MB, 8,422,496 parameters, **CPU-only** inference. |
 
@@ -29,11 +29,13 @@ disagree.
 A model can agree with an expert teacher on ~59 % of positions, beat a
 random player 85.2 % of the time, and play a recognisable, non-degenerate
 board-reading game — and **still lose** to a three-line rule that only
-checks *"can I win now?"* and *"can I block now?"*.
+checks *"can I win now?"* and *"can I block now?"*. Against that heuristic
+it wins only 37.2 % of games.
 
-It also loses to a policy that does nothing but play the middle column
-(90.5 % vs. the model's 85.2 % against random — a significant difference,
-Fisher exact p = 0.0024). Both losses are published below.
+It *beats* the centre-column policy head-to-head (543-57, 90.5 % of 600
+games). But that same policy scores higher against a random opponent
+(91.0 % vs. the model's 85.2 %, Fisher exact p = 0.0024) — so the model
+is **not** the stronger player overall. Both facts are published below.
 
 We think that's worth publishing, so we publish the negative result as
 prominently as the positive one. Every number below traces to a command
