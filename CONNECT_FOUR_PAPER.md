@@ -23,12 +23,16 @@ a board-disjoint holdout, up from 16.3 % / 11.9 % at initialisation. It
 beats a random opponent decisively (**85.2 %** win rate, n=600) and plays a
 recognisable, non-degenerate game.
 
-However, we report a **negative strength result**: across the entire
-100,000-step training run the model remains **net-negative against a 1-ply
+However, we report a **negative strength result**: across the whole of the
+100,000-step training run (measured to step 46,000 at the time of
+writing) the model remains **net-negative against a 1-ply
 heuristic** (win > block opponent's immediate win > centre tiebreak), never
 reaching parity. An independent in-game matrix over five opponent families
-confirms it beats the best single-column constant policy in only **2 of 5**
-settings.
+(600 games per arm, 3 seeds) confirms it: the model wins only **37.2 %**
+against the 1-ply heuristic and **24.3 %** against 2-ply lookahead. The
+model *does* beat a centre-column policy head-to-head (90.5 %), but that
+policy scores higher than the model against a random opponent (91.0 % vs.
+85.2 %, p = 0.00236), so the model's overall profile is the weaker one.
 
 We argue this dissociation is the paper's principal contribution.
 **Agreement with an expert teacher is not a proxy for game strength.** A
@@ -231,6 +235,11 @@ ladder against random and heuristic.
 - Label agreement: **16.3 % → ~59 %** (train), **11.9 % → ~41 %**
   (holdout). A large, unambiguous gain.
 - Win rate vs. random: **85.2 %** (511-88-1 of 600), stable.
+- Win rate vs. the centre-column policy, head-to-head: **90.5 %**
+  (543-57-0 of 600) — the model wins that match. However, that policy
+  itself scores **91.0 %** against random (546-54), above the model's
+  85.2 %, so the model's overall profile against random opposition is
+  the weaker one (Fisher exact p = 0.00236).
 - The model demonstrably **reads the board**. Its move distribution is
   spread across all seven columns (holdout picks
   `[39, 55, 94, 175, 78, 48, 23]`), it is not a degenerate constant
@@ -268,9 +277,34 @@ harness, 600 games per arm per seed across 3 seeds, model greedy
 (ε = 0) while the opponent explores (ε = 0.3) so that trajectories are
 genuinely distinct:
 
-- vs. random: **W1460 L337 D3** of 1800 (p ≈ 3.2 × 10⁻¹⁶⁶).
-- vs. the best single-column constant: the model wins in **2 of 5**
-  opponent settings — **not** a clean sweep.
+Measured results for the released checkpoint (step 18000), 200 games per
+arm per seed × 3 seeds = **600 games per arm**:
+
+| Opponent family | Model W-L-D | Win % | Best constant in the same block | Fisher p (model vs that constant) |
+|---|---:|---:|---|---:|
+| random | 511-88-1 | **85.2 %** | centre_policy 546-54 (**91.0 %**) | 0.00236 |
+| heuristic (1-ply) | 223-376-1 | **37.2 %** | always-c0 159-441 | 7.2 × 10⁻⁵ |
+| lookahead (2-ply) | 146-452-2 | **24.3 %** | centre_policy 97-503 | 4.2 × 10⁻⁴ |
+| minimax | 251-343-6 | **41.8 %** | centre_policy 235-363 | 0.316 |
+| centre (head-to-head vs centre_policy) | **543-57-0** | **90.5 %** | always-c0 470-130 | 6.9 × 10⁻⁹ |
+
+Two findings, and they point in opposite directions, so both are reported:
+
+1. **The model wins the direct match against the centre-column policy**
+   (543-57-0, 90.5 % of 600 games). `centre_policy` is deterministic — it
+   always plays column 3, then the leftmost legal column — so it is
+   exploitable.
+2. **But `centre_policy` is the stronger player overall.** Measured against
+   a random opponent it scores **91.0 %** (546-54) versus the model's
+   **85.2 %** (511-88), a significant difference (Fisher exact
+   p = 0.00236). A deterministic policy converts more wins against a random
+   opponent than a greedy model does, because a random opponent rarely
+   occupies the centre.
+
+The model is also **net negative against the 1-ply heuristic** (37.2 %) and
+against 2-ply lookahead (24.3 %). Overall the model is a real but weak
+player: it reads the board, it beats random decisively, and it loses to
+three-line rules.
 
 Seats were checked separately: model gap **+7.5 pp**, heuristic gap
 **+4.8 pp**, gap-versus-gap **p = 0.402** — no compelling model-specific
