@@ -98,6 +98,8 @@ corpus.
 | Teacher agreement, board-disjoint holdout | **41.0 %** |
 | Teacher agreement, holdout per-ply subset (n=512) | 41.8 % |
 | Win rate vs. random (200-game x 3-seed matrix, n=600) | 85.2 % (511-88-1) |
+| Win rate vs. centre-column policy, head-to-head | 90.5 % (543-57-0) — the model wins |
+| Centre-column policy's own win rate vs. random | 91.0 % (546-54) — **higher** than the model's; Fisher p = 0.00236 |
 | Win rate vs. 1-ply heuristic | **net-negative** |
 | Exact-solver holdout coverage | 560 / 1,500 = **37.3 %** |
 
