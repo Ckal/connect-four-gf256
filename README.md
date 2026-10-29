@@ -136,8 +136,8 @@ optimal**, not a chance of winning.
 ## Reproduce it
 
 ```bash
-git clone https://github.com/Ckal/<REPO>.git
-cd <REPO>
+git clone https://github.com/Ckal/connect-four-gf256.git
+cd connect-four-gf256
 
 # Train (seed 32, 100k steps, batch 16, ctx 192)
 V24_TAG=v24 bash run_v24.sh
@@ -252,7 +252,7 @@ docs/                          the full research record
   author = {Kaller, Christof},
   year   = {2026},
   note   = {Author: Christof Ckal},
-  url    = {https://github.com/Ckal/<REPO>}
+  url    = {https://github.com/Ckal/connect-four-gf256}
 }
 ```
 

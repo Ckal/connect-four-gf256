@@ -33,7 +33,7 @@ If a number is not in this file, it is not publishable.
 |---|---|---|
 | Public name | Christof Ckal | user instruction |
 | X / Twitter | `https://x.com/zX14_7` | confirmed as *Christof Kaller* |
-| GitHub (public source) | `Ckal` — https://github.com/Ckal | `gh auth status` shows the account; 152 public repos |
+| GitHub (public source) | **`Ckal/connect-four-gf256`** — https://github.com/Ckal/connect-four-gf256 | **PUBLISHED 2026-10-29.** Repo verified public via `gh api repos/Ckal/connect-four-gf256`. Active `gh` account switched to `Ckal` (API: login `Ckal`, name `Christof Kaller`, email `Christof.Kaller@gmail.com`, blog `ckaller.blogspot.de`). Clean-history staging via `tmp/stage_public_repo.sh` (the source history holds a 118 MB blob that exceeds GitHub's 100 MB limit). Local Windows paths sanitized to `C:\Users\<user>` before publish. |
 | Blog | `ckaller.blogspot.de` | Blogger token present at `~/AppData/Local/hermes/google_token.json` |
 | LinkedIn | `de.linkedin.com/in/christof-kaller-6b043733` | profile found |
 | Hugging Face | **TBD — new namespace required** | The `ckal` HF namespace belongs to **a different person** and must not be used. The currently authenticated HF account is also the wrong public identity. |
