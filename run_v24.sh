@@ -42,6 +42,24 @@
 #   bash run_v24.sh                     # default 100,000 steps
 #   V24_STEPS=200000 bash run_v24.sh     # 10 epochs
 #   V24_RESUME=runs/_probe/v24/final_float.pt bash run_v24.sh
+#
+# RESUME FROM AN INTERRUPTED RUN
+#   An interrupted run leaves NO final_float.pt -- that file is only written
+#   when the step loop finishes.  Resume from the last snapshot instead:
+#
+#     V24_RESUME=runs/_probe/v24/checkpoints/step58000_soft.pt \
+#     V24_STEPS=100000 V24_TAG=v24 bash run_v24.sh
+#
+#   The resume source must be a FLOAT checkpoint (the *_soft.pt snapshots),
+#   not a hard export (best_hard.pt / step*_hard.pt): the hard export has no
+#   optimizer or RNG state, so resuming from it silently restarts Adam and
+#   loses the momentum history.  train.py restores Adam moments and the
+#   python/numpy/torch RNG states, and takes the lag set from the checkpoint
+#   (it refuses a --lags that disagrees).
+#
+#   Verified: resuming step58000_soft.pt reproduces that step's metrics
+#   exactly (train 57.625%, holdout 37.70%, hard_bpb 6.3721) and continues
+#   to the next step.
 set -u
 cd "$(dirname "$0")"
 PY=./.venv-c4/Scripts/python.exe
