@@ -739,7 +739,7 @@ def evaluate_play(model, device, n_games: int, rng: random.Random,
     the model has learned to block an immediate win and to build its own --
     i.e. whether the self-play signal reached the weights.
 
-    BUG (fixed 2026-10-23): the model used to be played with
+    BUG (fixed): the model used to be played with
     ``torch.multinomial`` ALWAYS, no matter what ``temperature`` was. A
     comment above the call site claimed "evaluation play uses its OWN
     temperature... A next-byte predictor deployed in the UI is played
@@ -2164,7 +2164,7 @@ def train(args):
         d, layers, fan_in = args.d, args.layers, args.fan_in
     # --lags overrides the architecture's default lag set.
     #
-    # WHY (2026-10-27): the 9-byte V2 header [c0..c6, last, turn] sits at
+    # WHY: the 9-byte V2 header [c0..c6, last, turn] sits at
     # stream offsets -8..-1 relative to the read position (the TURN byte).
     # With the historical lags (0,1,2,4,8,16,32,64) and 3 layers, a column
     # is visible only if the lag SET admits a path to its offset -- and the
@@ -2239,7 +2239,7 @@ def train(args):
     nprng = np.random.default_rng(seed + 2)
 
     # ---- LEARNING-RATE SCHEDULE -------------------------------------------
-    # Claude's review is right that a constant LR will start oscillating
+    # A constant LR starts oscillating
     # once the loss is near its floor: Adam with a fixed step size keeps
     # bouncing around the minimum.  A cosine decay over the FULL run
     # (including any resume) removes that failure mode without touching
@@ -3059,7 +3059,7 @@ def train(args):
             # it is flat-to-declining exactly when the model is getting better
             # at playing the game. Promoting on it discarded 6,000 steps of
             # genuine improvement: best_hard.pt/best_soft.pt were last written
-            # at 08:49 (step ~1500) and never again through step 8500.
+            # at  (step ~1500) and never again through step 8500.
             #
             # Why the ladder score must be computed BEFORE this line, always:
             # `opp_results` is only populated when `step % save_every == 0`,
@@ -3067,7 +3067,7 @@ def train(args):
             # read 0 -- making every non-save eval look like a catastrophic
             # regression.
             #
-            # SCALE CONSISTENCY (fixed 2026-10-23). The fallback must be the
+            # SCALE CONSISTENCY (fixed). The fallback must be the
             # LAST MEASURED LADDER score, not `score`. `score` is the
             # vs_ref net-wins against the *centre column* reference -- a much
             # weaker opponent than `heuristic` -- so the two numbers are not
@@ -3962,7 +3962,7 @@ def build_parser():
     # --- optimisation ---
     ap.add_argument("--lr", type=float, default=3e-3)
     ap.add_argument("--lr-drop", type=float, default=0.3)
-    # --- LR schedule (Claude's review, confirmed gap) ----------------------
+    # --- LR schedule ------------------------------------------------------
     # A constant LR lets Adam oscillate around the optimum late in a long
     # run.  Cosine decay removes that without touching the objective.
     # "none" is the DEFAULT so every historical run reproduces exactly.
@@ -3970,7 +3970,7 @@ def build_parser():
                     help="'cosine' decays the LR from --lr to half of it over "
                          "the run (absolute step, so a resume stays on the "
                          "same curve); 'none' keeps the historical constant LR")
-    # --- EMA weights (Claude's review, confirmed gap) ---------------------
+    # --- EMA weights ------------------------------------------------------
     # The EMA copy is flatter around the optimum than the raw weights and is
     # the copy that should be hardened and shipped when --ema-export is set.
     # 0.0 disables it (default) so historical runs are unaffected.
@@ -4087,7 +4087,7 @@ def build_parser():
     # -generation knob, eval temperature is a measurement knob, and
     # conflating them meant we scored the model on its stumbles.
     #
-    # DEFAULT CHANGED 0.2 -> 0.0 (2026-10-23). 0.0 means GREEDY: the
+    # DEFAULT CHANGED 0.2 -> 0.0. 0.0 means GREEDY: the
     # argmax over the legal columns, which is exactly what the UI serves
     # and exactly what `Agent(greedy=True)` does. At 0.2 the ladder graded
     # a STOCHASTIC policy, so every "vs_opp" number in every log from V15

@@ -1,7 +1,7 @@
 # Connect Four AI — in plain words
 
 **For:** someone who has never seen this code
-**Updated:** 28 October 2026 (late night) — see **§9.9** for the current status
+**Updated:**  (late night) — see **§9.9** for the current status
 
 > **Start with `docs/CURRENT_TRUTH.md`** if you want the current, one-page,
 > non-contradictory summary. This document is the long-form explanation and
@@ -51,7 +51,7 @@ So the model reads those bytes and predicts: is the next move byte `B`, `E`, or
 
 ### Why this format (V2) and not the old text one
 
-The original format wrote the board as ASCII (`A X X X ...`). That format was
+The original format wrote the board as ASCII (`A X X X...`). That format was
 **lossy**: two different positions could produce identical text. Measured
 **1,662 colliding headers** among sampled positions.
 
@@ -134,7 +134,7 @@ board.
 
 ### The split
 
-> **CORRECTED 26 October 2026.** The split below was the single biggest
+> **CORRECTED.** The split below was the single biggest
 > cause of the weak model: the depth filter was applied to **train only**,
 > so the model was never supervised on an opening, while the holdout
 > (which kept every depth) was 68.3% opening. The metric was measuring a
@@ -223,7 +223,7 @@ once and is now documented in the script.
 
 ## 7. The website
 
-Go to **http://127.0.0.1:7860/**
+Go to **http://127.0.0.60/**
 
 - Click a column to drop your disc
 - The model picks its move automatically
@@ -254,14 +254,14 @@ weak bot turned out to be **2 distinct games**.
 
 ---
 
-## 9. Honest status — 26 October 2026 (REWRITTEN: the old status was wrong)
+## 9. Honest status — (REWRITTEN: the old status was wrong)
 
 > **Read this before any other section.** The status that used to live here
 > said "the model works". **That was wrong, and the measurement that produced
 > it was broken.** The numbers are corrected below. Nothing in this document
 > should be trusted over this section if the two disagree.
 
-### 9.-1 Update 27 October 2026 — we finally know WHERE the centre-bias lives
+### 9.-1 Update — we finally know WHERE the centre-bias lives
 
 The question "is the brain too small to ever play a side column?" now has
 a **measured** answer, and it is **no**.
@@ -344,7 +344,7 @@ The trainer has two forward passes:
 - a **hard** one, which picks exactly one value at every step.
 
 The file we save and put in front of people is the **hard** one — that is
-what `export_hard()` writes, and what the live game reads. But the trainer
+what `export_hard` writes, and what the live game reads. But the trainer
 only started training the hard version at step **12,000**:
 
 ```
@@ -408,7 +408,7 @@ sufficient. Every artifact we have still loses to lookahead and minimax,
 and none of them beats the one-step-lookahead opponent. Turning the
 board-reading back on is the first repair, not the last one.
 
-> **CORRECTION (night of 26 October).** This section calls the
+> **CORRECTION (night).** This section calls the
 > `--hard-start` problem "the biggest finding". That is no longer true.
 > The `--hard-start` fix was **necessary but not sufficient** — under it
 > the exported tables were *still* frozen, so the model stayed board-blind
@@ -631,9 +631,9 @@ supervising 386,916 of them.
 
 **The trainer now accepts a per-ply sidecar** (`--perply-targets`):
 
-- `src/c4/train.py::_perply_rows_for_batch()` places the sidecar target
+- `src/c4/train.py::_perply_rows_for_batch` places the sidecar target
   for ply p on exactly the token that predicts ply p's **move byte**;
-- `src/c4/train.py::_align_perply_targets()` loads
+- `src/c4/train.py::_align_perply_targets` loads
   `target (N,P,7)`, `ply_of (N,P)`, `n_plies (N,)` and refuses to train
   if the row count does not match the corpus;
 - `snap_to_end` is now enabled for the per-ply path too, because a random
@@ -655,7 +655,7 @@ self-consistent test would have passed:
    division `p = (byte - move_off) // ply_len` puts all 10 bytes of a
    ply into the same ply p, so 9 of every 10 positions were handed a move
    target for a *header* byte. Fixed with an exactness check
-   (`abs_byte != p*ply_len + move_off`).
+   (`abs_byte!= p*ply_len + move_off`).
 2. **The move offset was `ply_len - 2` (8) instead of `MOVE_OFFSET` (9).**
    Both the implementation *and* its test used the same wrong formula, so
    they agreed with each other. The test was rewritten to identify the
@@ -760,7 +760,7 @@ Both were found and fixed; the corrected numbers are the ones above.
   mirror-paired labels, and 100% on the disjoint holdout too.
 - **The STE schedule question is answered**: keep `--hard-start 0`.
 
-### 9.6b The honest status as of the night of 26 October 2026
+### 9.6b The honest status as of the night of 
 
 The table-freezing fix is real and it works. But it is a **prerequisite, not
 a finish line**. Here is where we actually stand:
@@ -801,7 +801,7 @@ fix — including all of V22 and its "46.3% holdout" and "ladder net -61" —
 is a constant-column policy in disguise. Those numbers are **not** evidence
 of a good model. Do not quote them, and do not treat them as a baseline.
 
-### 9.6c The V23 / data / "teach it the first 7 moves" question — answered 27 October 2026
+### 9.6c The V23 / data / "teach it the first 7 moves" question — answered 
 
 Three people were asked the same question in different words: *"isn't it just
 the training data?"*, *"can't we just teach it the first 7 moves?"*, and
@@ -825,7 +825,7 @@ mirror-consistent labels. It does not give you a mirror-consistent
 model.** V23 predates the table-freezing fix, so it is a historical
 artifact — not a release candidate.
 
-#### The structural blindness is real (Claude was right)
+#### The structural blindness is real (the reviewer was right)
 
 The wiring that actually ships makes four of the seven columns hard or
 impossible to reach, and the left and right sides of the board are
@@ -855,7 +855,7 @@ sparse:  c0/c6 1.00x   c1/c5 infinite   c2/c4 1.08x
 dense:   c0/c6 1.09x   c1/c5 1.00x      c2/c4 1.14x
 ```
 
-#### The entropy regulariser is NOT the cause (Claude was wrong here)
+#### The entropy regulariser is NOT the cause (the reviewer was wrong here)
 
 Turning the entropy regulariser off entirely changes nothing about the
 blindness:
@@ -1004,7 +1004,7 @@ the arms trained on, so it was not disjoint from either:
 
 ```
 holdout positions:                 4,325
-seen during full-game training:      207  ( 4.8%)
+seen during full-game training:      207  (4.8%)
 seen during curriculum training:   1,099  (25.4%)
 ```
 
@@ -1034,7 +1034,7 @@ This one changes exactly two things — the lag set and the data — and keeps
 the training budget and the number of passes fixed. **This is the run that
 decides the question.** Until it lands, no V24.
 
-### 9.6e The mirror experiment — finally run properly (27 October 2026, 20:35)
+### 9.6e The mirror experiment — finally run properly (,)
 
 The one open question from §9.6d was: *does training on mirrored copies of
 the same games actually help, or does it just look like it because the
@@ -1107,7 +1107,7 @@ about symmetry, this would fix it for free. It does not: it gains
 **0.1 to 0.6 points** and pushes the model *back* towards the middle column
 (37% → 51%). The symmetry has to be **trained in**, not bolted on.
 
-### 9.6h A correction we had to make to our own numbers (27 October 2026, 21:15)
+### 9.6h A correction we had to make to our own numbers (,)
 
 When we first wrote up the mirror result, we put the "how often does it
 play the middle column?" number next to the other results. That number came
@@ -1206,7 +1206,7 @@ remaining work is to get a recipe that keeps the symmetry and blocking
 gains *without* the centre drift, and to prove more of the middle-of-game
 positions where our perfect checker still gives up.
 
-### 9.6m The "draw with 36 empty squares" bug (27 October 2026, late)
+### 9.6m The "draw with 36 empty squares" bug (, late)
 
 You played a game against the site. You and the model both kept choosing
 **column 7**, the game said **DRAW**, and the board still had most of its
@@ -1234,7 +1234,7 @@ legal move left?*:
 
 ```python
 # RIGHT
-return not self.valid_actions()
+return not self.valid_actions
 ```
 
 #### Why it survived so long
@@ -1312,9 +1312,9 @@ skipped slot by **why** it was skipped.
 
 #### What is now in place
 
-- `Board.is_full()` means "no legal action remains".
-- `src/c4/board.py` exposes `is_terminal()` — one canonical terminal
-  predicate for the whole project — plus `assert_terminal_consistent()`.
+- `Board.is_full` means "no legal action remains".
+- `src/c4/board.py` exposes `is_terminal` — one canonical terminal
+  predicate for the whole project — plus `assert_terminal_consistent`.
 - **Every consumer now uses it.** The duel harness, the play loop, the
   corpus generator, the corpus quality check, the outcome-RL trainer, the
   augmentation builder, the benchmark and the trainer all call the
@@ -1395,7 +1395,7 @@ how it was proven fixed, is in `docs/CONNECT_FOUR_HANDOVER.md`.
 
 ---
 
-# Where we are right now (27 October 2026)
+# Where we are right now 
 
 ## The short version
 
@@ -1571,8 +1571,8 @@ That is fatal against someone who keeps stacking one column. A real game
 against the model:
 
 ```
-opponent:  7  7  7  .  .  .  .  1  1  1  1
-model   :  7  7  7  4  4  1  1  4  2  2
+opponent:  7  7  7....  1  1  1  1
+model:  7  7  7  4  4  1  1  4  2  2
 ```
 
 The model answered column 7 with column 7, three times over. Because the
@@ -1703,7 +1703,7 @@ verified, and the re-measured ones are now the ones to trust.
 checks above come back green.
 
 
-## 9.6s — WHY THE MODEL STILL PLAYED BADLY: A LIE-TO-THE-MODEL TEST (28 Oct 2026)
+## 9.6s — WHY THE MODEL STILL PLAYED BADLY: A LIE-TO-THE-MODEL TEST 
 
 We had fixed the false draw, recovered 101,090 missing labels, and proved
 the labels were clean. But the model still played badly. This section
@@ -1735,8 +1735,8 @@ Then we ask: does the model now play the false column?
 On the 1,500 real test positions:
 
 ```
-choice CHANGED when the last-move byte lied : 351 / 1498  (23.43%)
-model actually PLAYED the false column        :  80 / 1498  ( 5.34%)
+choice CHANGED when the last-move byte lied: 351 / 1498  (23.43%)
+model actually PLAYED the false column:  80 / 1498  (5.34%)
 ```
 
 The model **mostly ignores** the false field. 5.34% is barely more than
@@ -1751,8 +1751,8 @@ board and the pieces, the best move must reflect too. We checked all
 1,500 test positions that way:
 
 ```
-model gives the same answer on the mirrored board : 941 / 1500  (62.73%)
-model gives a DIFFERENT answer                    : 559 / 1500  (37.27%)
+model gives the same answer on the mirrored board: 941 / 1500  (62.73%)
+model gives a DIFFERENT answer: 559 / 1500  (37.27%)
 ```
 
 **In 37% of positions the model changes its mind when you simply mirror
@@ -1886,7 +1886,7 @@ quietest possible way.
 Each position has some columns blocked (full) and some free. The penalty
 compares the model's answer on a board with the model's answer on the
 mirrored board. But the set of free columns on a board and the set of free
-columns on its mirror are **not the same columns** — column 2 may be free
+columns on its mirror are **not the same columns** — column be free
 on one side and column 4 (its mirror) may be full on the other.
 
 Our code computed the "correct answer on the mirror" by flipping a
@@ -2109,7 +2109,7 @@ not the right answer.
 
 ### What we are serving
 
-**fd_a** is now live at <http://127.0.0.1:7860/>. It is:
+**fd_a** is now live at <http://127.0.0.60/>. It is:
 
 * the model with the lowest copying rate,
 * the model that keeps the centre column at 19% when a side column is
@@ -2156,7 +2156,7 @@ anything else, and retrained from scratch.
 
 The new model **no longer copies you** (it echoed the column-7 player
 0% of the time; the old one echoed it 50%). It is now serving at
-<http://127.0.0.1:7860/>.
+<http://127.0.0.60/>.
 
 But we were honest about the limits: the new model still loses to an
 opponent who only plays one column. It fails *differently* now — it
@@ -2321,9 +2321,9 @@ known it.
 - The tool now **says out loud** when its result is not comparable:
 
   ```
-  !! NON-AUTHORITATIVE SUBSET: budget=4000000 n_solvable=42
-  !! The authoritative subset is budget=120000000 n_solvable=560.
-  !! These percentages are NOT comparable to authoritative runs.
+!! NON-AUTHORITATIVE SUBSET: budget=4000000 n_solvable=42
+!! The authoritative subset is budget=120000000 n_solvable=560.
+!! These percentages are NOT comparable to authoritative runs.
   ```
 
   and records the same warning inside the output file, so the warning
@@ -2381,9 +2381,9 @@ a number.
 We measured 19,497 random positions:
 
 ```
-  displayed at 100% : 902 (4.63%)
-    ...only ONE legal column : 902
-    ...MULTIPLE legal columns: 0
+  displayed at 100%: 902 (4.63%)
+...only ONE legal column: 902
+...MULTIPLE legal columns: 0
 ```
 
 **Every 100% comes from the same situation: only one column is legal.**
@@ -2605,7 +2605,7 @@ same 560 positions**:
 (These are the numbers from the *masked*, shipped-protocol measurement —
 see §9.8.8 for a measurement bug that briefly produced different ones.)
 
-> **⚠️ IMPORTANT SCOPE CORRECTION (28 Oct 2026, late).** The table above is
+> **⚠️ IMPORTANT SCOPE CORRECTION (, late).** The table above is
 > from the **560 solver-proven positions only**, and that set is
 > **endgame-heavy** (it is restricted to boards with ≤24 empty cells). It is
 > **not** the model's overall behaviour. On the **full 19,279-position**
@@ -2683,7 +2683,7 @@ bottleneck and we do a full relabel. If the model still ignores columns
 1 and 2, we add an explicit rule forcing it to consider every legal
 column, because that failure is in the model's head, not in the data.
 
-### 9.8.7 Two things we got wrong, and one that changed the plan (28 Oct 2026, late)
+### 9.8.7 Two things we got wrong, and one that changed the plan (, late)
 
 **A. The "28% agreement" was never a bug.** An external review suspected the
 imported training data was decoded with the wrong column order or the wrong
@@ -2736,7 +2736,7 @@ coverage/entropy penalty before you know the cause.* Agreed - a penalty would
 force the model to use columns it currently under-uses without fixing the
 label problem that is upstream of it. The cause is now known.
 
-### 9.8.8 A measuring tape that was wrong (28 Oct 2026, late)
+### 9.8.8 A measuring tape that was wrong (, late)
 
 One of our own measurement scripts told us the model scored **65 %** where
 the official measurement said **75 %**. Same 560 positions, same model, same
@@ -2797,7 +2797,7 @@ matter.
 
 ---
 
-### 9.8.9 The list of things §9.9 retracts (28 Oct 2026, late night)
+### 9.8.9 The list of things §9.9 retracts (, late night)
 
 §9.9 found that the trainer was reading the **teacher's answers for the
 wrong games** (see §9.9 for the full explanation). Anything below that
@@ -2826,11 +2826,11 @@ depends on *what a trained model did* was measuring that bug, and is
 * the corpus and sidecar repairs
 * the hard-export parity and the UI parity suite
 * the trainer's own `LEGAL` metric as a measure of *played-move* agreement
-  — but **not** as a measure of teacher agreement
+— but **not** as a measure of teacher agreement
 
 ---
 
-## 9.9 Was the model bad, or was the training wrong? (28 October 2026, late night)
+## 9.9 Was the model bad, or was the training wrong? (, late night)
 
 Short answer: **the training was wrong.** The architecture was fine.
 
@@ -2950,8 +2950,8 @@ Short answer: **yes, and by a lot.** First hard in-game comparison, same
 harness, same seed, same opponent, 600 games each:
 
 ```text
-old broken model : won 399, lost 201   (66.5 %)
-corrected model  : won 948, lost 250   (79.1 %, 1200 games)
+old broken model: won 399, lost 201   (66.5 %)
+corrected model: won 948, lost 250   (79.1 %, 1200 games)
 ```
 
 That difference is far beyond statistical noise (p < 0.00000001).
@@ -2979,7 +2979,7 @@ producing *identical* scores. Fixed, re-measured, and the table above is
 from the corrected run.
 
 
-## 9.10 The acceptance test passed — and the checkpoint picker was broken too (28 October 2026, late)
+## 9.10 The acceptance test passed — and the checkpoint picker was broken too (, late)
 
 ### The short version
 
@@ -3072,7 +3072,7 @@ full corrected retrain of all three arms          RUNNING
 old fd_a/fd_b/fd_c strength numbers              PROVISIONAL, must be re-measured
 ```
 
-You can still play the old checkpoint at `http://127.0.0.1:7860/` — it is
+You can still play the old checkpoint at `http://127.0.0.60/` — it is
 a working opponent, just not a fair representation of the architecture.
 
 
@@ -3094,8 +3094,8 @@ We proved this two ways:
 ### Why such a big gap? Because the full run barely started.
 
 ```text
-small test set : 500 games, the model saw each one ~125 times  -> 91.3 %
-full data set  : 320,000 games, the model saw each one 0.3 times -> 51 %
+small test set: 500 games, the model saw each one ~125 times  -> 91.3 %
+full data set: 320,000 games, the model saw each one 0.3 times -> 51 %
 ```
 
 To see every game once, you need **20,000 training steps**. We ran
@@ -3239,7 +3239,7 @@ V24 runs alone, so it gets the whole card:
 | One full pass over the data (20,000 steps) | **3.6 hours** |
 | Five passes (100,000 steps) | **18.1 hours** |
 
-So the run finishes around **18:00 tomorrow evening**, not the following
+So the run finishes around ** tomorrow evening**, not the following
 morning.
 
 ### What it will probably score
@@ -3266,18 +3266,18 @@ we should stop. That is exactly what the new abort rule watches for.
 
 ### The hour-by-hour, honestly
 
-Assuming a start at 00:00, at 0.65 s/step:
+Assuming a start at, at 0.65 s/step:
 
 | Time | Step | Passes over data | `LABEL` (rough) |
 |---|---|---|---|
-| 00:30 | ~2,800 | 0.14 | ~41 % |
-| 01:00 | ~5,500 | 0.28 | ~45 % |
-| 02:00 | ~11,100 | 0.55 | ~50 % |
-| 03:00 | ~16,600 | 0.83 | ~53 % |
-| 04:00 | ~22,200 | 1.11 | ~55 % |
-| 06:00 | ~33,300 | 1.66 | ~58 % |
-| 12:00 | ~66,500 | 3.32 | ~61 % |
-| ~18:05 | 100,000 | 5.00 | ~63 % |
+|  | ~2,800 | 0.14 | ~41 % |
+|  | ~5,500 | 0.28 | ~45 % |
+|  | ~11,100 | 0.55 | ~50 % |
+|  | ~16,600 | 0.83 | ~53 % |
+|  | ~22,200 | 1.11 | ~55 % |
+|  | ~33,300 | 1.66 | ~58 % |
+|  | ~66,500 | 3.32 | ~61 % |
+| ~ | 100,000 | 5.00 | ~63 % |
 
 Read the `LABEL` column as "roughly where the curve points", not as a
 promise. The step counts are solid; the percentages are a projection.
@@ -3311,7 +3311,7 @@ trains" button was not actually working. Four separate faults, all found
 by running the code rather than reading it:
 
 **1. The status file was not valid JSON.** It wrote the training step as
-a bare empty slot, which produced `"step": ,`. Nothing could read it --
+a bare empty slot, which produced `"step":,`. Nothing could read it --
 including the button's own test. An unknown step is now `null`, and the
 free-text part is escaped so a stray quote cannot break the file again.
 
@@ -3382,7 +3382,7 @@ p-value. The `duel` harness ignores its own seed argument, so the audit
 seeds the random number generator itself before every match. Getting the
 same answer twice, independently, is what reproducibility looks like.
 
-## 9.16 The test failures that were never about the tests (29 October 2026)
+## 9.16 The test failures that were never about the tests 
 
 The live-UI tests kept failing, and the failure *moved around* -- one
 sweep it was the v3 test, the next sweep v4 and v5, sometimes four at
@@ -3426,7 +3426,7 @@ check what else is running. The full sweep on an idle machine is now:
 All four live-UI tests pass, plus the new single-server test. The
 midnight run is no longer blocked on this.
 
-## 9.17 Three sweeps at once -- my own fault (29 October 2026, later)
+## 9.17 Three sweeps at once -- my own fault (, later)
 
 Three sweeps ran at the same time and produced three different-looking
 results: 24/24, 23/24, 22/23. Each of those looked like a different bug.
@@ -3465,9 +3465,9 @@ lock lifecycle:     acquire / block / auto-reclaim / release  all verified
 ```
 
 
-## 9.18 The training run started -- and the machine was not empty (29 October 2026)
+## 9.18 The training run started -- and the machine was not empty 
 
-The big training run finally started at 02:34 in the morning. It is the
+The big training run finally started at  in the morning. It is the
 one that trains for many hours over the whole corpus instead of stopping
 after a few thousand steps.
 
@@ -3501,10 +3501,10 @@ touch the live one that is serving the model you are playing.
 **Where things stand now:**
 
 ```text
-training:    running, 100,000 steps (~12.3 h, done ~14:50)
+training:    running, 100,000 steps (~12.3 h, done ~)
 at step 2000: 40.2% label agreement   (predicted 40.23% -- matches)
 holdout:     29.0%   (data the model has never seen)
-playing:     http://127.0.0.1:7860/ -- updates itself as the model improves
+playing:     http://127.0.0.60/ -- updates itself as the model improves
 watching:    an automatic check every 45 minutes tells us if anything goes wrong
 ```
 
@@ -3514,7 +3514,7 @@ That number was measured on a crowded machine. The real figure is
 waited five hours longer than necessary for no reason.
 
 
-## 9.19 The disk was filling up -- and it was not the training (29 October 2026)
+## 9.19 The disk was filling up -- and it was not the training 
 
 Partway through setting up the long run, the computer reported only
 **4.3 GB free** out of 931 GB. That looks alarming: the run itself was
@@ -3558,7 +3558,7 @@ got 45.3%), and the playable page has already updated itself to the
 step-4000 model on its own.
 
 
-## 9.20 The computer went to sleep -- and everything survived (29 October 2026)
+## 9.20 The computer went to sleep -- and everything survived 
 
 You asked whether the run was still alive after the computer slept.
 Short answer: **yes, and nothing was lost.**
@@ -3567,17 +3567,17 @@ What actually happened, which is a bit more interesting than "it slept
 for a minute":
 
 ```text
-04:41   step 18000 written to the log
-04:47   the computer asks to go to sleep
-05:58   the computer actually wakes up     <- 71 minutes asleep
-06:01   the training is still going
-06:06   step 20000 written to the log
+   step 18000 written to the log
+   the computer asks to go to sleep
+   the computer actually wakes up     <- 71 minutes asleep
+   the training is still going
+   step 20000 written to the log
 ```
 
 The gap between "asks to sleep" and "wakes up" is where I nearly
 misdiagnosed it. Windows records the *request* to sleep, which makes it
 look like a 6-second nap. The event that actually tells you when the
-machine came back says **05:58**. So the sleep was **71 minutes**, not
+machine came back says ****. So the sleep was **71 minutes**, not
 six seconds. That is the number that explains the log gap.
 
 **Why the log looked stalled.** The trainer only writes a line every
@@ -3588,7 +3588,7 @@ would have concluded the training had hung or died.
 **How I actually checked, instead of guessing:**
 
 - Asked the operating system whether the training process still exists
-  -> yes, worker process alive since 02:33.
+  -> yes, worker process alive since.
 - Looked inside the running process to see what it was doing -> it was
   in the middle of the training loop, building batches, not stuck.
 - Read the **live step counter** out of the running process -> 19,439,
@@ -3617,7 +3617,7 @@ step 20000 | LABEL 59.0% | HOLDOUT 36.2% | H-LABEL 38.9%
 ```
 
 and the honest remaining time is **about 9.3 hours of awake time**,
-finishing around **15:30** -- not the ~16:40 the raw wall-clock
+finishing around **** -- not the ~ the raw wall-clock
 suggested, because the sleep does not count as training time.
 
 **The lesson:** a stale log is not evidence of a dead run. Before

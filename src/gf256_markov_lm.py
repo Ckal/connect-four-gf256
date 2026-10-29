@@ -514,7 +514,7 @@ if __name__ == "__main__":
     main(build_parser().parse_args())
 
 ###
-#PS C:\Users\<user>> python gf256_markov_lm.py --seed 64 --steps 12000 --ctx 256 --eval_every 400 --eval_seqs 64 --eval_chunk_size 4 --batch 4 --no_ckpt
+# PS <user>\> python gf256_markov_lm.py --seed 64 --steps 12000 --ctx 256 --eval_every 400 --eval_seqs 64 --eval_chunk_size 4 --batch 4 --no_ckpt
 #params 58.75M | d=64 layers=6 seed=64
 #step     0 | soft BPC 3.596 | hard BPC 3.595 | entropy 0.798 | 2s
 #step   400 | soft BPC 2.982 | hard BPC 6.352 | entropy 0.302 | 137s
@@ -543,7 +543,7 @@ if __name__ == "__main__":
 
 
 ###
-# PS C:\Users\<user>> python gf256_markov_lm.py --seed 64 --steps 12000 --ctx 256 --eval_every 400 --eval_seqs 64 --eval_chunk_size 4 --batch 4 --no_ckpt --data smollm_subset.txt
+# PS <user>> python gf256_markov_lm.py --seed 64 --steps 12000 --ctx 256 --eval_every 400 --eval_seqs 64 --eval_chunk_size 4 --batch 4 --no_ckpt --data smollm_subset.txt
 # cuda
 # params 58.75M | d=64 layers=6 seed=64
 # step     0 | soft BPC 3.639 | hard BPC 3.639 | entropy 0.798 | 2s

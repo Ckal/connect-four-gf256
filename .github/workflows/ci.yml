@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast gate: the package must import and the pure-python unit tests must
+  # pass. No model weights are needed for this job.
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CPU torch + numpy
+        run: |
+          python -m pip install --upgrade pip
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu \
+              -r requirements.txt
+
+      - name: Import integrity
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, '.')
+          import src.c4.board, src.c4.agent, src.c4.opponents, src.c4.transcript_v2
+          import src.c4.movemask, src.c4.symmetry, src.c4.patterns, src.c4.exact_solver
+          import src.c4.mirror, src.c4.corpus, src.c4.corpus_integrity
+          import src.c4.ui_server, src.c4.sessions
+          print('imports OK')
+          "
+
+      - name: Session + embedding unit tests
+        run: |
+          python tests/test_sessions_unit.py
+          python tests/test_embedding_cookie.py
+
+  # The full sweep drives a live ui_server and compares it against an
+  # independent probe, so it needs a checkpoint. It is a separate job so a
+  # missing weight never blocks the fast gate.
+  regression:
+    name: full regression sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CPU torch + numpy
+        run: |
+          python -m pip install --upgrade pip
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu \
+              -r requirements.txt
+
+      - name: Fetch the release checkpoint
+        # The parity tests compare the live UI against an independent probe
+        # loaded from this path, so the file must be a real checkpoint --
+        # the released one is used. A second copy sits under fx_a_s6000 for
+        # the two tests that diff two checkpoints; they skip if it is absent.
+        run: |
+          mkdir -p runs/_probe/fd_a_s6000/checkpoints runs/_probe/fx_a_s6000/checkpoints
+          URL=https://huggingface.co/Chris4K/connect-four-gf256/resolve/main/best_hard.pt
+          curl -L --fail --retry 3 -o runs/_probe/fd_a_s6000/checkpoints/step6000_hard.pt "$URL"
+          curl -L --fail --retry 3 -o runs/_probe/fx_a_s6000/checkpoints/step6000_hard.pt "$URL"
+          sha256sum runs/_probe/fd_a_s6000/checkpoints/step6000_hard.pt
+          # 134035637b637f87f3837aa8929dc5ec5db3bb0f0c9526f93fe1449be77672e2
+
+      - name: Regression sweep
+        run: bash tools/run_regression_sweep.sh

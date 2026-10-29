@@ -13,3 +13,6 @@ __pycache__/
 .env
 *.key
 *.pem
+
+# local model weights -- download from Hugging Face instead
+*.pt

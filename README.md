@@ -1,71 +1,52 @@
 # Reading the Board — a GF(256) integer model that learns Connect Four
 
-**A small neural model with an exact-solver teacher, trained to read a
-Connect Four board — and an honest measurement of how good it actually is.**
+**A small neural model whose trunk does XOR and table lookups instead of
+float multiply-accumulates — and an honest measurement of how good it
+actually is.**
 
-Author: **Christof Ckal** · Project: ZeroFLops
+Author: **Christof Ckal**
 
-> ### ▶ Play it against the model
->
-> **https://c4.tensorgarten.de**
->
-> A real, session-isolated game — every visitor gets their own board.
-> Deployed on CPU. [Verified isolation + security claims](#security-verification).
->
-> Or play it inside the Hugging Face Space:
-> **https://huggingface.co/spaces/Chris4K/connect-four-gf256**
-> (the Space is static and frames the live server; the server allows that
-> one origin explicitly — never a wildcard).
-
-![The game running against the GF(256) model](c4_001-006.gif)
+![A recorded game against the GF(256) model](c4_001-006.gif)
 
 *A recorded game against the released checkpoint (`best_hard`, step 18,000).
 Gold is the human, blue is the model.*
 
----
+## How good is it, actually?
 
-## TL;DR
+600 games per arm, against the released checkpoint:
 
-| | |
-|---|---|
-| **Architecture** | GF(2⁸) integer trunk — XOR, table lookups, integer adds. No floating-point MAC in the trunk. |
-| **Supervision** | Every ply of every game labelled with the **set of optimal moves** from an exact solver. |
-| **Training data** | 320,000 games → 4,462,571 per-ply labels. |
-| **Result (teacher agreement)** | 16.3 % → **59.6 %** on train, 11.9 % → **41.0 %** on a board-disjoint holdout. |
-| **Result (game strength)** | Beats random **85.2 %**. **Beats the centre-column policy head-to-head (90.5 %)** yet scores **below** it against random (85.2 % vs. 91.0 %, p = 0.0024). **Loses to a 1-ply heuristic** (wins only 37.2 %). 600 games per arm. |
-| **The point** | Teacher-agreement and game strength are **different things**, and this repo shows it with two independent measurements. |
-| **Model size** | 32.3 MB, 8,422,496 parameters, **CPU-only** inference. |
+| Opponent | Model's win rate | Verdict |
+|---|---:|---|
+| Random player | **85.2 %** | beats it |
+| Centre-column policy | **90.5 %** | beats it head-to-head |
+| 1-ply heuristic | **37.2 %** | **loses to it** |
+| 2-ply lookahead | **24.3 %** | **loses to it** |
+| Minimax | **41.8 %** | **loses to it** |
 
----
+That gap is the point of the project. The model agrees with its teacher on
+**59.6 %** of training positions and **41.0 %** of a board-disjoint holdout —
+and it still loses to a three-line rule that only checks *"can I win now?"*
+and *"can I block now?"*. **Teacher-agreement and game strength are
+different things**, and this repo measures both.
 
-## Why this repo exists
+## ▶ Play it against the model
 
-Most training runs report one number. This one reports two — and they
-disagree.
+**https://c4.tensorgarten.de**
 
-A model can agree with an expert teacher on ~59 % of positions, beat a
-random player 85.2 % of the time, and play a recognisable, non-degenerate
-board-reading game — and **still lose** to a three-line rule that only
-checks *"can I win now?"* and *"can I block now?"*. Against that heuristic
-it wins only 37.2 % of games.
+A real, session-isolated game — every visitor gets their own board. Deployed
+on CPU. [Verified isolation + security claims](#security-verification).
 
-It *beats* the centre-column policy head-to-head (543-57, 90.5 % of 600
-games). But that same policy scores higher against a random opponent
-(91.0 % vs. the model's 85.2 %, Fisher exact p = 0.0024) — so the model
-is **not** the stronger player overall. Both facts are published below.
-
-We think that's worth publishing, so we publish the negative result as
-prominently as the positive one. Every number below traces to a command
-and an artifact.
+Or play it inside the Hugging Face Space:
+**https://huggingface.co/spaces/Chris4K/connect-four-gf256**
+(the Space is static and frames the live server; the server allows that
+origin explicitly — never a wildcard).
 
 ---
 
 ## The model
 
-The trunk is a GF(2⁸) integer program — the same architecture as the
-companion language-modelling work
-[*GF(256) Lagrange Field Transformer*](GF256_LANGUAGE_MODEL_PAPER.md),
-applied here to a game.
+The trunk is a GF(2⁸) integer program: XOR, learned S-box table lookups and
+integer adds. **No floating-point multiply-accumulate in the trunk.**
 
 ```
 board ──► byte transcript ──► GF(256) trunk ──► read-out ──► column logits
@@ -75,12 +56,23 @@ board ──► byte transcript ──► GF(256) trunk ──► read-out ─�
 - **Layers:** 3 · **`d`:** 32 · **lags:** `[0,1,2,3,4,5,6,7,8,9,10,20]`
 - **Context:** 192 · **Batch:** 16 · **Seed:** 32
 - **Params:** emb 8,192 · coef 288 · sbox 24,576 · wiring 576 · readout 8,388,608 · bias 256
+- **Size:** 32.3 MB, 8,422,496 parameters, **CPU-only** inference.
 
 **Honest scoping of "zero FLOPs":** the *trunk* has no floating-point
 multiply-accumulate. The read-out is float32 and is **99.6 %** of the
 parameters. The complete model is therefore *not* a zero-FLOP program.
 
----
+### Supervision
+
+Every ply of every training game is labelled with the move chosen by a
+**negamax alpha-beta teacher** (and a 2-ply lookahead teacher), with ties
+preserved as sets rather than collapsed.
+
+> The teacher is a *search policy*, not a proof of optimality. Connect Four
+> is a solved game, but this model was never taught the full solution — it
+> imitates a bounded search. The repo's `src/c4/exact_solver.py` is a
+> **separate, bounded endgame solver** (`max_empty=7`) used to *check*
+> positions, not to label the corpus.
 
 ## Results
 
@@ -104,7 +96,7 @@ parameters. The complete model is therefore *not* a zero-FLOP program.
   (holdout: `[39, 55, 94, 175, 78, 48, 23]`), with non-zero per-column
   recall for every column. It is not a degenerate constant policy.
 - It **beats random** 85.2 % of the time (n=600, 3 seeds).
-- It **agrees with the exact solver** on 59.6 % of training positions and
+- It **agrees with the teacher** on 59.6 % of training positions and
   41.0 % of held-out positions.
 
 ### What it did not learn
@@ -127,39 +119,33 @@ genuinely distinct:
 - seat check: model gap **+7.5 pp**, heuristic gap **+4.8 pp**,
   gap-vs-gap **p = 0.402** — no model-specific seat asymmetry
 
----
-
 ## Read the model yourself
+
+The checkpoint is hosted on Hugging Face rather than committed to this
+repository, so a clone stays small:
 
 ```bash
 # 1. Download the checkpoint (32.3 MB)
 curl -L -o best_hard.pt \
   https://huggingface.co/Chris4K/connect-four-gf256/resolve/main/best_hard.pt
 
-# 2. Play it (the server takes --model; --checkpoint does not exist)
-python -m src.c4.ui_server --model best_hard.pt --port 7860 --device cpu
-# open http://127.0.0.1:7860/
-```
-
-`best_hard.pt` is the step-18,000 hard export. Verify the download before
-using it:
-
-```bash
+# 2. Verify it before using it
 sha256sum best_hard.pt
 # 134035637b637f87f3837aa8929dc5ec5db3bb0f0c9526f93fe1449be77672e2
+
+# 3. Play it (the server takes --model; --checkpoint does not exist)
+python -m src.c4.ui_server --model best_hard.pt --port 7860 --device cpu
+# open http://127.0.0.1/
 ```
 
-The UI shows the model's next-move distribution over all seven columns
-(rendered from the **hard** path), the legal-move set, and lets you undo
-and reset. The 100 % figure on a column is a **probability of being
-optimal**, not a chance of winning.
+`best_hard.pt` is the step-18,000 hard export. The UI shows the model's
+next-move distribution over all seven columns (rendered from the **hard**
+path), the legal-move set, and lets you undo and reset. The 100 % figure on
+a column is a **probability of being optimal**, not a chance of winning.
 
 > The public deployment uses **per-session boards**. The upstream research
 > UI keeps a single board in a module global and is **not** safe for
 > multi-user hosting as shipped.
-
----
-
 
 ## Security verification
 
@@ -176,10 +162,10 @@ python scripts/verify_public_isolation.py https://c4.tensorgarten.de
 The Space at
 [`Chris4K/connect-four-gf256`](https://huggingface.co/spaces/Chris4K/connect-four-gf256)
 is **static** — it contains only a page that frames the live server. The
-server permits exactly one framing origin:
+server permits exactly the framing origins it needs:
 
 ```
-Content-Security-Policy: …; frame-ancestors https://chris4k-connect-four-gf256.static.hf.space
+Content-Security-Policy: …; frame-ancestors https://chris4k-connect-four-gf256.static.hf.space https://huggingface.co
 ```
 
 The allowlist is explicit and closed:
@@ -191,11 +177,16 @@ The allowlist is explicit and closed:
   let any site clickjack the game.
 - **The allowlist replaces `X-Frame-Options`** when it is in force — XFO can
   only allow or deny a single origin, while CSP can name several.
+- **State-changing requests are origin-checked.** Because the session cookie
+  must be `SameSite=None` to work inside a cross-site frame, the server
+  validates the `Origin` header on every mutating request instead of relying
+  on `SameSite=Lax` for CSRF protection. A request from an origin that is
+  not the site or an allowlisted ancestor is refused with **HTTP 403**.
 
 Run it yourself:
 
 ```bash
-python -m src.c4.ui_server --model model/best_hard.pt --public \
+python -m src.c4.ui_server --model best_hard.pt --public \
     --allow-embedding https://chris4k-connect-four-gf256.static.hf.space
 ```
 
@@ -204,23 +195,24 @@ It asserts, and all of these currently hold:
 | Assertion | Result |
 |---|---|
 | `GET /` returns 200 with a real page | PASS |
-| Content-Security-Policy, `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`, HSTS | PASS |
+| Content-Security-Policy, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, HSTS | PASS |
 | Two clients receive **different** session cookies | PASS |
 | The session cookie is `HttpOnly` and `Secure` | PASS |
 | **A move in one session is invisible in another** — no shared board | PASS |
 | `/modelinfo` and `/reload` are closed in public mode (HTTP 403) | PASS |
+| A mutating request from a non-allowlisted origin is refused (HTTP 403) | PASS |
 
-The session cookie as served:
+The session cookie as served when cross-site embedding is enabled:
 
 ```
-Set-Cookie: tg_sid=<opaque id>; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=7200
+Set-Cookie: tg_sid=<opaque id>; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=7200
 ```
+
+Without an embedding allowlist it is `SameSite=Lax; Secure`.
 
 The checkpoint served by the public container is byte-identical to the one
 on Hugging Face — SHA-256
 `134035637b637f87f3837aa8929dc5ec5db3bb0f0c9526f93fe1449be77672e2`.
-
----
 
 ## Reproduce it
 
@@ -228,16 +220,18 @@ on Hugging Face — SHA-256
 git clone https://github.com/Ckal/connect-four-gf256.git
 cd connect-four-gf256
 
+pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+
 # Train (seed 32, 100k steps, batch 16, ctx 192)
 V24_TAG=v24 bash run_v24.sh
 
 # Score any checkpoint against its owner corpus
-./.venv-c4/Scripts/python.exe -u tmp/measure_promotion_scorer.py \
+python -u tools/measure_promotion_scorer.py \
   --corpus-run runs/_probe/v24 \
   runs/_probe/v24/checkpoints/best_hard.pt
 
-# Full regression suite (24 tests)
-bash tmp/run_regression_sweep.sh
+# Full regression suite
+bash tools/run_regression_sweep.sh
 ```
 
 The scorer **refuses to guess** which corpus belongs to a checkpoint: pass
@@ -245,7 +239,8 @@ The scorer **refuses to guess** which corpus belongs to a checkpoint: pass
 run. Without one it exits non-zero rather than scoring against the wrong
 data.
 
----
+Every published number traces to a command and an artifact — see
+[`RESULTS.md`](RESULTS.md).
 
 ## Bugs that had to be fixed first
 
@@ -270,36 +265,32 @@ cited in the paper.
 Fixing this also invalidated the old "always play column 3" control: it
 had actually been a centre-first *staircase*, not a constant policy.
 
----
-
 ## Reproducibility guarantees
 
 | Property | Evidence |
 |---|---|
 | Bit-exact resume | max weight Δ **0.000e+00**, identical Adam moments (12/12 checks) |
-| Full regression suite | **24 PASS, 0 FAIL** — reproduced by two independent sweeps |
+| Full regression suite | **27 PASS, 0 FAIL** — reproduced by independent sweeps |
 | Live UI parity | 40/40 played columns, next-move distribution L1 = **0.000e+00** |
 | Atomic checkpoint publication | 9/9 checks; 0 corrupt reads in 769 reads |
 | Transcript stamping | 3/3 checks |
 
 Component suites: live parity v3/v4/v5 · UI hot reload 14/14 · resume
 state 19/19 · resume equivalence 12/12 · single-server UI 8/8 · atomic
-save 9/9 · transcript stamp 3/3 · watcher 12/12.
-
----
+save 9/9 · transcript stamp 3/3 · watcher 12/12 · sessions 47/47 ·
+embedding + origin policy 18/18.
 
 ## Layout
 
 ```
-release/
-├── README.md                      this file
-├── RELEASE_RECORD.md              every published number → command + artifact
-├── CONNECT_FOUR_PAPER.md         the Connect Four manuscript
-├── GF256_LANGUAGE_MODEL_PAPER.md the companion language-model manuscript
-├── FOLLOWUP_PLAN.md               what comes next
-├── MODEL_CARD.md                 the model card
-├── SOCIAL_COPY.md                ready-to-post social copy
-└── media/                         demo assets
+.
+├── README.md                  this file
+├── RESULTS.md                 every published number → command + artifact
+├── CONNECT_FOUR_PAPER.md     the Connect Four manuscript
+├── FOLLOWUP_PLAN.md           what comes next
+├── MODEL_CARD.md              the model card
+├── c4_001-006.gif             the demo recording
+├── requirements.txt           pinned runtime dependencies
 
 src/
 ├── c4/
@@ -310,15 +301,16 @@ src/
 │   ├── opponents.py           random / centre / heuristic / lookahead / minimax
 │   ├── transcript_v2.py       canonical transcript decoder
 │   ├── corpus_integrity.py    corpus + transcript validation
+│   ├── sessions.py            per-session boards and cookies
 │   └── ui_server.py           the game UI (see the multi-user note above)
 ├── gf256_markov_lm_v6.py      the shipped architecture
-└── generate.py                text-generation driver (companion paper)
+└── generate.py                text-generation driver
 
-tmp/                           curated tests and authoritative tools
+tests/                         the regression suite
+tools/                         the authoritative measurement scripts
+scripts/verify_public_isolation.py   the public deployment gate
 docs/                          the full research record
 ```
-
----
 
 ## Limitations
 
@@ -331,33 +323,19 @@ docs/                          the full research record
 5. **Architecture-level superiority is unproven** — the controlled A/B arms
    reached only 0.30 epoch-equivalents and are provisional.
 6. **Mirror/symmetry questions remain open** for the corrected model.
-7. This work is **separate** from the companion language-modelling paper;
-   results do not transfer between them.
-
----
 
 ## Citation
 
 ```bibtex
 @misc{ckal2026gf256_connectfour,
   title  = {Reading the Board: A GF(256) Integer Model for Connect Four},
-  author = {Kaller, Christof},
+  author = {Ckal, Christof},
   year   = {2026},
-  note   = {Author: Christof Ckal},
   url    = {https://github.com/Ckal/connect-four-gf256}
 }
 ```
 
----
-
-## Companion work
-
-- *GF(256) Lagrange Field Transformer — A Character-Level Language Model
-  Whose Trunk Compiles to an Integer Program* — Hard BPC 3.071 on Tiny
-  Shakespeare. **A separate work**; shares the architecture, not the
-  findings. Full text: [`GF256_LANGUAGE_MODEL_PAPER.md`](GF256_LANGUAGE_MODEL_PAPER.md).
-
 ## License
 
-Code: MIT (see `LICENSE`). Paper text: © 2026 Christof Kaller.
+Code: MIT (see `LICENSE`). Paper text: © 2026 Christof Ckal.
 Model weights: MIT.

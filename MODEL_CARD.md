@@ -2,22 +2,22 @@
 license: mit
 library_name: pytorch
 tags:
-  - reinforcement-learning
   - game-ai
   - connect-four
   - gf256
   - integer-arithmetic
+  - supervised-learning
   - research
-pipeline_tag: text-generation
 ---
 
 # GF(256) Connect Four — Model Card
 
 **Author:** Christof Ckal
 **Project:** ZeroFLops
-**Companion paper:** *GF(256) Lagrange Field Transformer — A Discrete
-Algebraic Language Model Compiled to Zero-FLOP Integer Programs* (separate
-work; shares the architecture, not the findings).
+**Companion work:** *GF(256) Lagrange Field Transformer* — a character-level
+language model built on the same architecture. It is a **separate work with
+its own repository** (shares the architecture, not the findings), so it is
+not linked from this card.
 
 ---
 
@@ -67,7 +67,7 @@ model is not** a zero-FLOP program.
   strength in a small, exactly-solvable game.
 - **Demonstration:** a CPU-only, single-file game server.
 - **Education:** a worked example of dense per-ply supervision from an
-  exact solver.
+  negamax teacher.
 
 **Not intended for:** production gameplay, competitive play, or any claim
 of playing strength. See *Limitations*.
@@ -78,8 +78,8 @@ of playing strength. See *Limitations*.
 
 - **Corpus:** 320,000 complete Connect Four games, 5,100,175 boards
   scanned, 4,462,571 per-ply labels.
-- **Supervision:** every ply labelled with the **set of optimal moves**
-  from an exact solver. Ties are preserved as sets, not collapsed.
+- **Supervision:** every ply labelled with the **set of teacher moves**
+  from a negamax alpha-beta teacher. Ties are preserved as sets, not collapsed.
 - **Objective:** cross-entropy against the optimal-move set.
 - **Protocol:** seed 32, batch 16, context 192, `--hard-start 0`,
   `--table-bias 0.0`.
@@ -106,7 +106,7 @@ corpus.
 
 ### The honest result
 
-The model **agrees with the exact solver on ~59 % of training positions**
+The model **agrees with the teacher on ~59 % of training positions**
 and **41.0 % of held-out positions**, beats a random opponent 85.2 % of
 the time, and plays a genuine board-reading game — its picks spread across
 all seven columns with non-zero per-column recall for every column.
@@ -157,7 +157,8 @@ release's central finding.
 7. **Mirror/symmetry questions remain open** for the corrected model;
    earlier historical conclusions predate a critical repair and are not
    evidence about this checkpoint.
-8. **This is a separate work** from the companion language-modelling paper.
+8. **This is a separate work** from the companion language-modelling paper,
+   which has its own repository.
    Results do not transfer between them.
 
 ---
@@ -170,8 +171,8 @@ record shipped with the repository. Key points:
 - The checkpoint stores `step` at the **top level** (not under `meta`).
 - Scoring requires the **owner corpus**; the scorer refuses to guess and
   exits non-zero when the corpus is ambiguous.
-- The regression suite is **24 PASS, 0 FAIL**, reproduced by two
-  independent sweeps (and re-verified after the session-isolation refactor).
+- The regression suite is **27 PASS, 0 FAIL**, reproduced by independent
+  sweeps (and re-verified after the session-isolation refactor).
 - The released artifact's SHA-256 is
   `134035637b637f87f3837aa8929dc5ec5db3bb0f0c9526f93fe1449be77672e2`.
 - Resume is **bit-exact** (max weight Δ 0.000e+00, identical Adam
@@ -189,4 +190,4 @@ contains only learned model weights over Connect Four board states.
 
 ## License
 
-MIT. Paper text: © 2026 Christof Kaller.
+MIT. Paper text: © 2026 Christof Ckal.

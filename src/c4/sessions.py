@@ -27,7 +27,10 @@ SECURITY NOTES
   * Session ids are 256 bits of ``secrets`` entropy, so they cannot be
     guessed or enumerated.
   * The cookie is ``HttpOnly`` (script cannot read it) and
-    ``SameSite=Lax`` (a cross-site POST cannot ride the session).
+    ``SameSite=Lax`` (a cross-site POST cannot ride the session). When the
+    game is served into a third-party iframe it is ``SameSite=None;
+    Secure`` instead, because a ``Lax`` cookie is not sent on a
+    cross-site subresource request.
   * A session id supplied by a client is validated against a strict
     character set before it is used as a dict key, so a hostile id can
     never reach the filesystem or a log line unfiltered.
@@ -280,15 +283,27 @@ def parse_cookies(header: str | None) -> dict[str, str]:
 
 
 def session_cookie(sid: str, *, secure: bool = False,
-                   max_age: int | None = None) -> str:
+                   max_age: int | None = None,
+                   samesite: str = "Lax") -> str:
     """Build a Set-Cookie header value for the session cookie.
 
-    ``HttpOnly`` keeps the id out of reach of page scripts, ``SameSite=Lax``
-    stops a cross-site form post from riding the session, and ``Path=/``
+    ``HttpOnly`` keeps the id out of reach of page scripts, and ``Path=/``
     scopes it to the whole app. ``Secure`` is added when the site is
     served over HTTPS (i.e. when TLS is terminated by the proxy).
+
+    ``samesite`` defaults to ``Lax``, which stops a cross-site form post
+    from riding the session. It must be ``None`` when the game is embedded
+    in a frame on ANOTHER site: a ``Lax`` cookie is not sent on a
+    cross-site subresource request, so in an iframe the browser would
+    drop it and every request would start a fresh, empty game. ``None``
+    requires ``Secure`` (browsers reject ``SameSite=None`` without it),
+    which is why ``secure=True`` is enforced alongside it.
     """
-    parts = [f"tg_sid={sid}", "Path=/", "HttpOnly", "SameSite=Lax"]
+    if samesite not in ("Lax", "Strict", "None"):
+        raise ValueError(f"unsupported SameSite value: {samesite!r}")
+    if samesite == "None" and not secure:
+        raise ValueError("SameSite=None requires Secure=True")
+    parts = [f"tg_sid={sid}", "Path=/", "HttpOnly", f"SameSite={samesite}"]
     if secure:
         parts.append("Secure")
     if max_age is not None:
@@ -296,6 +311,8 @@ def session_cookie(sid: str, *, secure: bool = False,
     return "; ".join(parts)
 
 
-def clear_session_cookie() -> str:
+def clear_session_cookie(*, samesite: str = "Lax") -> str:
     """Build a Set-Cookie header value that expires the session cookie."""
-    return "tg_sid=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+    if samesite not in ("Lax", "Strict", "None"):
+        raise ValueError(f"unsupported SameSite value: {samesite!r}")
+    return f"tg_sid=; Path=/; HttpOnly; SameSite={samesite}; Max-Age=0"

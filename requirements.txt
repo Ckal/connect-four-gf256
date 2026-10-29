@@ -1,0 +1,16 @@
+# Runtime dependencies for the Connect Four GF(256) release.
+#
+# The model itself needs only torch + numpy. The CPU-only pin is what the
+# Docker deployment uses; a CUDA build of the same torch version works
+# locally and produces identical results (the trunk is integer arithmetic
+# and the read-out is float32, so the two paths agree to float precision).
+#
+#   pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+#
+# The trailing "+cpu" local version is what the PyTorch CPU index serves.
+# For a GPU workstation, install the matching CUDA build instead:
+#
+#   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+
+torch==2.5.1
+numpy==1.26.4

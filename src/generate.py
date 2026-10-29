@@ -185,7 +185,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model",
-        default=r"C:\Users\<user>\runs\gf64\checkpoints\step_000006000.pt",
+        default=r"<run-dir>/gf64/checkpoints/step_000006000.pt",
         help="Path to a hard-model artifact, raw hard payload, or training checkpoint.",
     )
     parser.add_argument("--prompt", default="First Citizen:\n")

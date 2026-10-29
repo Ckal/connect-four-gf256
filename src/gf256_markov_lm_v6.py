@@ -124,7 +124,7 @@ class GFLayer(nn.Module):
         # `table_bias` scales the identity/one-hot init bonus on the table
         # logits (1.0 = historical behaviour, 0.0 = unbiased).
         #
-        # WHY THIS EXISTS (2026-10-26): the bonus creates a top1-top2 margin
+        # WHY THIS EXISTS: the bonus creates a top1-top2 margin
         # of ~7.7 logits. Adam moves a parameter by at most `lr` per step,
         # so a run of N steps can move it by at most lr*N -- 1.8 logits at
         # lr=0.0006 / 3000 steps, 7.2 over 12,000. The margin that must be

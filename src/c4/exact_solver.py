@@ -1,6 +1,5 @@
 """Exact Connect Four endgame solver for positions with <= `max_empty` cells.
 
-The user is right: "there is an algo for calculationg the last 7 steps."
 A Connect Four position with 7 or fewer empty cells is fully solvable, and
 below that it becomes very cheap. This module implements that properly, in
 the style of Pascal Pons' *Solving methods for Connect 4*: bitboard negamax

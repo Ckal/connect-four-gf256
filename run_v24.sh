@@ -135,7 +135,7 @@ echo "           one epoch = $STEPS_PER_EPOCH steps -> this run = $EPOCHS epoch-
 echo "           eval_every=$EVAL_EVERY save_every=$SAVE_EVERY eval_games=$EVAL_GAMES"
 echo "           resume=${RESUME:-<fresh>}"
 
-# ---- the DISJOINT holdout (Claude's review, confirmed gap) -------------
+# ---- the DISJOINT holdout (the review, confirmed gap) -------------
 # The promotion key's PRIMARY term is direct label agreement, but the
 # scorer samples the TRAINING corpus.  That measures fit, not
 # generalisation.  The holdout corpus + sidecar below are canonical-board

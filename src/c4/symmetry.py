@@ -253,7 +253,7 @@ def mirror_equivariance_loss(
     # The target: reflect the ORIGINAL prediction, then renormalise over
     # the common support so both distributions live on the same set.
     #
-    # BUG (fixed 2026-10-28): the reflection must be applied to the
+    # BUG (fixed): the reflection must be applied to the
     # ORIGINAL (unmasked) log-softmax, not to the already-masked one.
     # `lp_o` is masked with `cm`, so `lp_o.flip(-1)` has support
     # `flip(cm)` -- which is NOT `cm` unless `cm` happens to be

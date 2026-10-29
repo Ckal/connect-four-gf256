@@ -2,12 +2,12 @@
 
 **Project:** ZeroFLops — GF(256) Connect Four
 **Author:** Christof Ckal
-**Opened:** 2026-10-29
+**Opened:** at release
 
 This plan starts from the **measured** state of the project, not from the
 original ambition. The central measurement is:
 
-> The model agrees with the exact solver on ~59 % of training positions
+> The model agrees with the teacher on ~59 % of training positions
 > and 41.0 % of held-out positions, beats random 85.2 %, plays a genuine
 > board-reading game — and **still loses to a 1-ply heuristic** at every
 > point in the run.
@@ -39,13 +39,13 @@ position?". The right question is "did the model's move cost us the win,
 *given how the game actually continued*?".
 
 Implement **per-ply decision regret**: at each ply, compare the model's
-move against the best available move under the exact solver's evaluation
+move against the best available move under the teacher's evaluation
 of the *actual* resulting position, weighted by the probability the game
 reaches a win from each branch.
 
 - Artifact: `src/c4/regret.py`, metric `regret_per_ply`.
 - Test: on a position where the model picks a losing move, regret > 0 and
-  the sign convention is verified against a hand-built position.
+ the sign convention is verified against a hand-built position.
 
 ### 1.2 Classify the error modes
 
@@ -81,16 +81,16 @@ This is the standard correction for exactly this failure mode: per-ply
 imitation teaches *what the teacher would do*, not *what wins*.
 
 - Compare: per-ply label CE (current) vs. advantage-weighted regression
-  vs. pure value regression.
+ vs. pure value regression.
 - Metric: **both** teacher agreement *and* ladder strength. A change that
-  improves one and not the other is itself a finding.
+ improves one and not the other is itself a finding.
 
 ### 2.2 Adversarial self-play data
 
 Generate training positions from the model's *own* games, not only from the
 solver's distribution. The solver's labels are only informative on
 positions the solver visits; the model visits different ones. Label
-model-reached positions with the exact solver and add them to training.
+model-reached positions with the teacher and add them to training.
 
 ### 2.3 Explicit threat features
 
@@ -143,14 +143,13 @@ tie sets. Rebuild the production sidecar with it and re-measure.
 These were historically "answered" before the row-index repair, so the
 answers are void. Each needs a proper controlled run:
 
-1. **Dense per-ply vs. single-label supervision.** The corrected arms
-   (`fx_a`/`fx_b`/`fx_c`) reached only 0.30 epoch-equivalents and settle
-   nothing. Needs a budget-matched rerun.
+1. **Dense per-ply vs. single-label supervision.** The corrected arms (`fx_a`/`fx_b`/`fx_c`) reached only 0.30 epoch-equivalents and settle
+ nothing. Needs a budget-matched rerun.
 2. **Mirror-consistency objective.** Was measured only pre-repair.
 3. **Symmetry equivariance.** Was measured only pre-repair.
 4. **Pons-style graded targets.** Never trained at all.
 5. **LR decay and EMA.** Both implemented and opt-in, but never given a
-   controlled numerical pilot.
+ controlled numerical pilot.
 
 **Measurement discipline for all of these:** the mirrored corpus, the
 mirror-consistent labels, and the mirror-consistent *behaviour* are three
@@ -197,36 +196,35 @@ Ordered by what unblocks the most:
 Replace the module-global `_GAME` with:
 
 1. a **per-session store** keyed by an opaque, unguessable id (HttpOnly
-   cookie / signed token);
+ cookie / signed token);
 2. a **bounded store** with TTL and eviction;
 3. **stateless inference** — the checkpoint is read-only and shared; only
-   the board is per-session. The model is a pure function of
-   (checkpoint, board), so no session state can leak into it;
+ the board is per-session. The model is a pure function of (checkpoint, board), so no session state can leak into it;
 4. **rate limiting** and request-size limits;
 5. tests: two concurrent sessions must not see each other's boards; a
-   session id must not be guessable; the store must evict under load.
+ session id must not be guessable; the store must evict under load.
 
 ### 6.2 Video — what it should show
 
 A **deterministic scripted match**, rendered from real game records:
 
 - the model against a fixed opponent, showing the next-move distribution
-  updating each ply;
+ updating each ply;
 - the board and the distribution side by side;
 - a caption that states the honest result — *beats random, loses to a
-  1-ply heuristic* — rather than a highlight reel that implies strength.
+ 1-ply heuristic* — rather than a highlight reel that implies strength.
 
 ---
 
 ## Explicit non-goals
 
 - **No architecture-level superiority claims** until a budget-matched A/B
-  exists.
+ exists.
 - **No reuse of pre-repair conclusions** in any public artifact.
 - **No public deployment** of the single-board UI.
 - **No upload** of the private corpus, historical runs, or logs.
 - **No headline numbers** for the 100,000-step run until it completes and
-  the release battery passes.
+ the release battery passes.
 
 ---
 

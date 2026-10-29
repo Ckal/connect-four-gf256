@@ -4,7 +4,7 @@
 
 **Author:** Christof Ckal
 **Project:** ZeroFLops
-**Code:** see the public repository (link in the README of this package)
+**Code:** https://github.com/Ckal/connect-four-gf256
 **Artifact:** `best_hard.pt`, step 18000, 32.3 MB, 8,422,496 parameters
 
 ---
@@ -14,8 +14,8 @@
 We apply a GF(2⁸)-based integer neural architecture, originally developed
 for character-level language modelling, to Connect Four — a game whose state
 is a 6×7 bit board with no hand-designed "how to play" rules. Training uses
-dense per-ply supervision from an exact solver, with every ply of every game
-labelled by the set of optimal moves.
+dense per-ply supervision from a negamax alpha-beta teacher, with every ply of every game
+labelled by the teacher's chosen move.
 
 On a 320,000-game corpus the model reaches **59.6 %** agreement with the
 solver's optimal-move labels on the training distribution and **41.0 %** on
@@ -49,7 +49,7 @@ Connect Four is a small, fully-observed, deterministic, perfect-information
 game. It is small enough to solve exactly. That makes it an unusually clean
 testbed for a question that is hard to study in larger games:
 
-> When you train a small model to imitate a perfect player, how much of
+> When you train a small model to imitate a strong search player, how much of
 > the player's *strength* do you actually recover?
 
 This question matters beyond Connect Four. Supervised imitation of a
@@ -122,12 +122,12 @@ is **transcript v2**.
 
 ### 3.2 Dense per-ply supervision
 
-Every ply is labelled with the **set of optimal moves** under an exact
+Every ply is labelled with the **set of teacher moves** under a negamax
 solver, not a single move and not an outcome. Where multiple moves are
 equally optimal, the label is the full set and the loss treats them as a
 tie.
 
-This matters. The exact solver is the teacher; it is never replaced by a
+This matters. The teacher is the search policy; it is never replaced by a
 weaker policy, and no fallback silently substitutes a different teacher.
 
 ### 3.3 Board-disjoint holdout
@@ -257,7 +257,7 @@ ladder against random and heuristic.
 
 ### 5.3 The dissociation
 
-The model at step 18000 agrees with the solver's optimal move on ~59 % of
+The model at step 18000 agrees with the teacher's move on ~59 % of
 training positions and 41.0 % of held-out positions, beats random 85.2 %
 of the time, plays a genuine board-reading game — and **still loses to a
 rule that only checks "can I win now" and "can I block now"**.
@@ -360,7 +360,7 @@ number, the exact command that produced it and the artifact it came from.
    responses, not teacher agreement.
 2. **Train against adversarial search** rather than static labels, so the
    supervision reflects positions the model actually reaches.
-3. **Search-based distillation** from the exact solver, which converts a
+3. **Search-based distillation** from the negamax teacher, which converts a
    value function into a policy far more efficiently than per-ply
    imitation.
 4. **Extend the architecture** so the read-out is also an integer program —
@@ -384,7 +384,7 @@ number, the exact command that produced it and the artifact it came from.
 
 ## Appendix B — Provenance
 
-Every measurement in this paper is traceable to `release/RELEASE_RECORD.md`,
+Every measurement in this paper is traceable to `RESULTS.md`,
 which records the command, artifact path, provenance anchor and scope limit
 for each number.
 
