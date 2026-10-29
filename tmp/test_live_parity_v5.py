@@ -28,6 +28,7 @@ over the SAME move history.
 """
 from __future__ import annotations
 
+import http.cookiejar
 import json
 import pathlib
 import random
@@ -45,8 +46,18 @@ from src.c4.board import Board  # noqa: E402
 BASE = "http://127.0.0.1:" + os.environ.get("UI_PORT", "7860")
 
 
+# The server is session-scoped: each visitor gets an opaque session id in a
+# cookie, and each session owns its own board. A test that makes several
+# requests WITHOUT carrying the cookie therefore sees a brand-new empty
+# board on every request -- which looks exactly like a broken server.
+# Every request here goes through one shared opener that keeps the cookie
+# jar, so all requests hit the SAME session.
+_JAR = http.cookiejar.CookieJar()
+_OPENER = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(_JAR))
+
+
 def get(path):
-    with urllib.request.urlopen(BASE + path, timeout=30) as r:
+    with _OPENER.open(BASE + path, timeout=30) as r:
         return json.loads(r.read().decode())
 
 
@@ -54,7 +65,7 @@ def post(path, body=None):
     data = json.dumps(body or {}).encode()
     req = urllib.request.Request(BASE + path, data=data,
                                  headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with _OPENER.open(req, timeout=60) as r:
         return json.loads(r.read().decode())
 
 

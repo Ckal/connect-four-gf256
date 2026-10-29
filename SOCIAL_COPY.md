@@ -56,8 +56,9 @@
 > Across the entire run the model was net-negative against it. Best point:
 > 23–25. Never ahead.
 >
-> An independent 5-opponent matrix agrees: it beats the best constant
-> column in only **2 of 5** settings.
+> A 600-game matrix against 5 opponent families agrees:
+> random **85.2%** · centre-column policy **90.5%** (head-to-head) ·
+> 1-ply heuristic **37.2%** · 2-ply lookahead **24.3%** · minimax **41.8%**.
 
 > **5/7**
 > Why?
@@ -73,7 +74,8 @@
 > Two more things I'd flag honestly:
 >
 > • the ~18pp train/holdout gap says a chunk of that 59.6% is memorisation
-> • agreement plateaued after ~step 14000 — more steps stopped helping
+> • agreement peaked at step 18000 (59.55%) and then stopped improving —
+>   later checkpoints (20k, 40k) measured *weaker* on every opponent
 >
 > The ladder isn't a vanity metric. It's the one that caught this.
 
@@ -81,8 +83,8 @@
 > The model, the code, the measurements and the full negative result are
 > all open:
 >
-> 🔗 repo: <GITHUB_URL>
-> 🔗 model: <HF_URL>
+> 🔗 repo: https://github.com/Ckal/connect-four-gf256
+> 🔗 model: https://huggingface.co/Chris4K/connect-four-gf256
 > 🔗 play it: <GAME_URL>
 >
 > Paper and the full release record in the repo. The release record maps
@@ -95,7 +97,7 @@
 > and loses to a 3-line heuristic.
 >
 > Teacher-agreement ≠ game strength. Full evidence, code and model:
-> <GAME_URL>
+> https://github.com/Ckal/connect-four-gf256
 
 ### 1c. Follow-up posts (after the release, spaced out)
 
@@ -185,9 +187,9 @@ the first paragraph, not buried. Every number links to the release record.
 >
 > Code, model weights, the paper and a release record that maps every
 > published number to the command that produced it:
-> <GITHUB_URL>
+> https://github.com/Ckal/connect-four-gf256
 >
-> Model: <HF_URL> · Play it: <GAME_URL>
+> Model: https://huggingface.co/Chris4K/connect-four-gf256 · Play it: <GAME_URL>
 >
 > #MachineLearning #GameAI #ImitationLearning #ConnectFour #Research
 
@@ -253,7 +255,8 @@ technical thread cost more credibility than a day's delay.
 - [ ] HF URL resolves and the model card is present
 - [ ] Game URL resolves, and **two browser tabs show two different boards**
       (the multi-user isolation test)
-- [ ] The 100,000-step final result is **not** claimed unless the run has
-      finished *and* the release battery has passed
+- [ ] The 100,000-step final result is **not** claimed — the run reached
+      step 46,000 with agreement plateaued at ~59%, and the release ships
+      step 18,000, the checkpoint that measured best on every opponent arm
 - [ ] No private corpus, logs, historical runs or credentials are attached
       or linked

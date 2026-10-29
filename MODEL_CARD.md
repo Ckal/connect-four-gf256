@@ -100,7 +100,8 @@ corpus.
 | Win rate vs. random (200-game x 3-seed matrix, n=600) | 85.2 % (511-88-1) |
 | Win rate vs. centre-column policy, head-to-head | 90.5 % (543-57-0) — the model wins |
 | Centre-column policy's own win rate vs. random | 91.0 % (546-54) — **higher** than the model's; Fisher p = 0.00236 |
-| Win rate vs. 1-ply heuristic | **net-negative** |
+| Win rate vs. 1-ply heuristic | 37.2 % (223-376-1) — **model loses** |
+| Win rate vs. 2-ply lookahead | 24.3 % (146-452-2) — **model loses** |
 | Exact-solver holdout coverage | 560 / 1,500 = **37.3 %** |
 
 ### The honest result
@@ -111,13 +112,26 @@ the time, and plays a genuine board-reading game — its picks spread across
 all seven columns with non-zero per-column recall for every column.
 
 It nevertheless **loses to a 1-ply heuristic** (win-now > block-now >
-centre tiebreak) at **every measured step of the entire 100,000-step run**.
-The best point is 23-25 (near parity, never ahead).
+centre tiebreak) at **every measured step of the training run** (measured to
+step 46,000 at the time of writing). The best point is 23-25 (near parity,
+never ahead).
 
 An independent in-game matrix (canonical `src.c4.duel` harness, 600 games
 per arm per seed × 3 seeds, model greedy ε=0, opponent explores ε=0.3)
-confirms it beats the best single-column constant policy in only **2 of 5**
-opponent settings.
+measures:
+
+| Opponent | Model win rate |
+|---|---:|
+| random | **85.2 %** |
+| centre-column policy, head-to-head | **90.5 %** (model wins) |
+| 1-ply heuristic | **37.2 %** |
+| 2-ply lookahead | **24.3 %** |
+| minimax | **41.8 %** |
+
+The model **wins** the direct match against the centre-column policy, but
+that policy scores higher than the model against a random opponent (91.0 %
+vs. 85.2 %, Fisher exact p = 0.00236) — so the model's overall profile
+against random opposition is the weaker one.
 
 **Teacher-agreement is not game strength.** That dissociation is the
 release's central finding.
@@ -133,7 +147,11 @@ release's central finding.
    proved label; the other 940 are **excluded**, not guessed. All holdout
    numbers are computed over the proved subset.
 4. **Train/holdout gap** of ~18 pp indicates a memorisation component.
-5. **Plateau.** Teacher agreement stopped improving after ~step 14,000.
+5. **Plateau.** Teacher agreement peaked at 59.55 % at step 18,000 and has
+   oscillated between 57.9 % and 59.4 % since; play strength *declined* over
+   the same window. Later checkpoints (20k, 40k) measure worse on every
+   opponent arm, so the released step-18,000 checkpoint is the strongest of
+   the three measured.
 6. **Architecture-level superiority is unproven.** Controlled A/B arms
    reached only 0.30 epoch-equivalents and settle nothing.
 7. **Mirror/symmetry questions remain open** for the corrected model;
@@ -153,7 +171,9 @@ record shipped with the repository. Key points:
 - Scoring requires the **owner corpus**; the scorer refuses to guess and
   exits non-zero when the corpus is ambiguous.
 - The regression suite is **24 PASS, 0 FAIL**, reproduced by two
-  independent sweeps.
+  independent sweeps (and re-verified after the session-isolation refactor).
+- The released artifact's SHA-256 is
+  `134035637b637f87f3837aa8929dc5ec5db3bb0f0c9526f93fe1449be77672e2`.
 - Resume is **bit-exact** (max weight Δ 0.000e+00, identical Adam
   moments).
 
