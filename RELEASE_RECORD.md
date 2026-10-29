@@ -186,12 +186,13 @@ the authoritative scorer against the owner corpus `runs/_probe/v24`.
 | `inference` | CPU-only | `exp_t`/`log_t` are CPU tensors |
 | `solver_holdout_coverage` | 560 / 1,500 = **37.3 %** | exact-solver holdout audit |
 | **strength vs random** | **85.17 %** (511-88-1, n=600) | §5.4 |
-| **strength vs centre_policy** | **90.50 %** (543-57-0, n=600) | §5.4 |
-| **strength vs 1-ply heuristic** | **37.17 %** (223-376-1, n=600) | §5.4 |
-| **strength vs 2-ply lookahead** | **24.33 %** (146-452-2, n=600) | §5.4 |
+| **strength vs centre_policy (head-to-head)** | **90.50 %** (543-57-0, n=600) — model **wins** | §5.4 |
+| **strength vs random, centre_policy** | **91.00 %** (546-54, n=600) | §5.4 — centre_policy scores *higher* against random than the model does |
+| **strength vs 1-ply heuristic** | **37.17 %** (223-376-1, n=600) — model **loses** | §5.4 |
+| **strength vs 2-ply lookahead** | **24.33 %** (146-452-2, n=600) — model **loses** | §5.4 |
 | **strength vs minimax** | **41.83 %** (251-343-6, n=600) | §5.4 |
 | `best_constant_baseline` | `centre_policy` (546-54 vs random) | §5.4 |
-| `model_vs_centre_policy_fisher_p` | 0.0024 | model LOSES, significant |
+| `model_vs_centre_policy_fisher_p` | **0.00236** | **centre_policy is significantly stronger than the model** when both are measured against random. Fisher implementation self-tested against [[1,9],[11,3]] = 0.00275946. |
 | `col_recall_train_c0` | 63.7 % | `metrics.jsonl` `perply_col_recall[0]` |
 | `col_recall_train_c1` | 56.5 % | `perply_col_recall[1]` |
 | `col_recall_train_c2` | 56.2 % | `perply_col_recall[2]` |
@@ -208,12 +209,14 @@ the authoritative scorer against the owner corpus `runs/_probe/v24`.
 **outer ones** (c5 43.3 %, c6 43.7 % on train; 18.6 % and 7.1 % on holdout).
 This is the residual of the historical "always-c3" defect: the repair fixed the
 *hard* centre bias, but a soft centre preference survives. The model's
-weakest play is exactly where `centre_policy` is strongest — which is why it
-loses to that baseline.
+weakest play is on the outer columns — exactly where a centre-column policy
+is never challenged.
 
-**The one-line truth:** the model reaches **85 % vs random** but **loses to a
-policy that only plays the centre column** (90.5 %), and is **net negative
-against a 1-ply heuristic** (37 %). It is not a strong Connect Four player.
+**The one-line truth:** the model reaches **85.2 % vs random**, **beats the
+centre-column policy head-to-head (90.5 %)**, but is **net negative against a
+1-ply heuristic (37.2 %)** and is **significantly weaker than the
+centre-column policy when both are measured against random** (85.2 % vs.
+91.0 %, p = 0.00236). It is not a strong Connect Four player.
 
 ### 5.1 The convergence curve (V24, tag `v24`)
 
@@ -316,23 +319,36 @@ Reproduce:
 
 | Opponent | Model W-L-D | Win % | Best constant baseline | Fisher p (model vs best) | Verdict |
 |---|---:|---:|---|---:|---|
-| random | 511-88-1 | **85.17 %** | centre_policy (546-54) | 0.0024 | **MODEL LOSES** |
+| random | 511-88-1 | **85.17 %** | centre_policy (546-54, **91.00 %**) | 0.00236 | **centre_policy is stronger than the model** (both vs random) |
 | heuristic (1-ply) | 223-376-1 | **37.17 %** | always-c0 | 0.00007 | model beats the constant, still loses the opponent |
 | lookahead (2-ply) | 146-452-2 | **24.33 %** | centre_policy | 0.0004 | model beats the constant |
 | minimax | 251-343-6 | **41.83 %** | centre_policy | 0.3165 | no significant difference |
-| centre (centre column only) | 543-57-0 | **90.50 %** | always-c0 | 6.9e-09 | model beats the constant, still loses the opponent |
+| **centre (head-to-head vs centre_policy)** | **543-57-0** | **90.50 %** | always-c0 (470-130) | 6.9e-09 | **the model WINS the head-to-head against centre_policy** |
 
 **What this says, precisely:**
 
-- The model beats random **decisively** (85 %, p ≈ 1e-70 vs. 50 %).
-- The model **loses to `centre_policy`** — a policy that plays the middle
-  column — with a significant Fisher exact p = 0.0024.
-- Against the 1-ply heuristic the model wins only **37 %** of games.
-- Against 2-ply lookahead it wins **24 %**.
+- The model beats random **decisively** (85.2 %, p ≈ 1e-67 vs. 50 %).
+- The model **beats `centre_policy` head-to-head** — 543-57-0, **90.5 %** of
+  600 games. This is the direct match: model as one player, `centre_policy`
+  as the opponent.
+- **But** `centre_policy` scores **91.0 % against random** (546-54) versus
+  the model's **85.2 %** (511-88). Fisher exact **p = 0.00236** — a
+  significant difference in `centre_policy`'s favour.
+- Against the 1-ply heuristic the model wins only **37.2 %** of games.
+- Against 2-ply lookahead it wins **24.3 %**.
+
+**Why both centre facts are true.** They measure different things. Head-to-
+head, `centre_policy` is *deterministic* — it always plays column 3, then
+the leftmost legal column — so it is exploitable: the model blocks and
+punishes it. Against a *random* opponent, a deterministic policy converts
+more wins than a greedy model does, because a random opponent rarely
+occupies the centre. Neither number is a head-to-head, and neither alone
+settles "who is the better player"; the honest summary is that the model
+**wins the direct match but has the weaker overall profile**.
 
 `centre_policy` is deliberately *not* a solver: it is a simple central-column
-rule with ε-exploration. The model is beaten by it. That is the headline
-negative result of this release.
+rule. The 1-ply heuristic loss is the headline negative result of this
+release.
 
 **Step 20000** — `runs/_probe/ingame_strength_step20000.json`: 84.67 / 86.67 /
 30.17 / 24.00 / 41.33 %. Worse than 18000 on every arm.
