@@ -762,6 +762,15 @@ _SESSION_SWEEP_INTERVAL_S = 60.0
 # model, so they are LOCAL-ONLY by default and must be turned off for a
 # public deployment.
 _ALLOW_ADMIN = True
+# Set by main(): the list of origins allowed to EMBED this server in an
+# iframe, e.g. ["https://chris4k-connect-four-gf256.static.hf.space"].
+#
+# Empty (the default) means "nobody may frame this": the response then
+# carries `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'`, which
+# is the correct posture for a site that is meant to be visited directly.
+# This is an explicit ALLOWLIST, never a wildcard -- an open
+# `frame-ancestors *` would let any site clickjack the game.
+_FRAME_ANCESTORS: list[str] = []
 # The agent the server is currently serving. A hot reload replaces it.
 # The session factory reads THIS global (not a closure over the startup
 # agent) so a session created after a reload plays against the new
@@ -817,6 +826,25 @@ class Handler(BaseHTTPRequestHandler):
             sid = None
         return not _SESSIONS.allow(sid)
 
+    def _csp(self) -> str:
+        """The Content-Security-Policy for this response.
+
+        The policy is strict by default: nothing is loadable except the
+        server's own inline script and styles. `frame-ancestors` names the
+        origins allowed to embed the page, or is 'none' when nobody may.
+
+        `frame-ancestors` replaces `X-Frame-Options` when an allowlist is
+        in force, because XFO can only allow or deny ONE origin while the
+        allowlist may name several, and because every current browser
+        understands CSP.
+        """
+        ancestors = " ".join(_FRAME_ANCESTORS) if _FRAME_ANCESTORS else "'none'"
+        return (
+            "default-src 'none'; script-src 'unsafe-inline'; "
+            "style-src 'unsafe-inline'; connect-src 'self'; "
+            "img-src 'self' data:; base-uri 'none'; form-action 'none'; "
+            f"frame-ancestors {ancestors}")
+
     def _send_json(self, code: int, payload: dict[str, Any],
                    extra_headers: list[tuple[str, str]] | None = None) -> None:
         body = json.dumps(payload).encode("utf-8")
@@ -829,14 +857,12 @@ class Handler(BaseHTTPRequestHandler):
         # from other origins), so a strict CSP costs nothing and blocks
         # the classic injection paths.
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
+        if not _FRAME_ANCESTORS:
+            # Legacy header, kept for the no-embed case: it covers very
+            # old browsers that ignore CSP.
+            self.send_header("X-Frame-Options", "DENY")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header(
-            "Content-Security-Policy",
-            "default-src 'none'; script-src 'unsafe-inline'; "
-            "style-src 'unsafe-inline'; connect-src 'self'; "
-            "img-src 'self' data:; base-uri 'none'; form-action 'none'; "
-            "frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy", self._csp())
         for k, v in (extra_headers or []):
             self.send_header(k, v)
         # A brand-new session must be told its id. An existing session
@@ -860,14 +886,10 @@ class Handler(BaseHTTPRequestHandler):
         # document itself is protected (X-Frame-Options matters most
         # here: it is what stops clickjacking the game).
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("X-Frame-Options", "DENY")
+        if not _FRAME_ANCESTORS:
+            self.send_header("X-Frame-Options", "DENY")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header(
-            "Content-Security-Policy",
-            "default-src 'none'; script-src 'unsafe-inline'; "
-            "style-src 'unsafe-inline'; connect-src 'self'; "
-            "img-src 'self' data:; base-uri 'none'; form-action 'none'; "
-            "frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy", self._csp())
         self.end_headers()
         self.wfile.write(body)
 
@@ -1016,6 +1038,13 @@ def main() -> int:
                    help="idle lifetime of a session, in seconds")
     p.add_argument("--max-sessions", type=int, default=512,
                    help="maximum concurrent sessions (LRU eviction)")
+    p.add_argument("--allow-embedding", action="append", default=None,
+                   metavar="ORIGIN",
+                   help="allow this origin to embed the game in an iframe. "
+                        "Repeatable. Only needed for the Hugging Face Space "
+                        "that frames the game. Without it the page is "
+                        "framed by nobody (X-Frame-Options: DENY and CSP "
+                        "frame-ancestors 'none').")
     p.add_argument("--cookie-secure", choices=["auto", "yes", "no"],
                    default="auto",
                    help="whether the session cookie carries the Secure "
@@ -1031,6 +1060,7 @@ def main() -> int:
         return 2
 
     global _COOKIE_SECURE, _RATE_LIMIT, _ALLOW_ADMIN, _SESSIONS
+    global _FRAME_ANCESTORS
     _COOKIE_SECURE = bool(args.public)
     if args.cookie_secure == "yes":
         _COOKIE_SECURE = True
@@ -1041,6 +1071,24 @@ def main() -> int:
     # swapping the model. They are useful locally (the watcher polls
     # /modelinfo) and dangerous in public, so `--public` turns them off.
     _ALLOW_ADMIN = not args.public
+
+    # --- embedding allowlist ------------------------------------------
+    # Only https origins are accepted: an http ancestor could be
+    # intercepted, and a wildcard would let any site clickjack the game.
+    origins = [o.strip() for o in (args.allow_embedding or []) if o.strip()]
+    for o in origins:
+        if not o.startswith("https://"):
+            print(f"ui_server: refusing embedding origin without https: {o}",
+                  file=sys.stderr)
+            return 2
+        if o == "https://*":
+            print("ui_server: refusing a wildcard embedding origin",
+                  file=sys.stderr)
+            return 2
+    _FRAME_ANCESTORS = origins
+    if _FRAME_ANCESTORS:
+        print("ui_server: embedding allowed for: "
+              + ", ".join(_FRAME_ANCESTORS), file=sys.stderr)
 
     # The default request_queue_size is 5. The live-parity sweep fires
     # requests back-to-back (GET /state, POST /move, GET /state, ...) with

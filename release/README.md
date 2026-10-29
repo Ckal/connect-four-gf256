@@ -11,6 +11,16 @@ Author: **Christof Ckal** · Project: ZeroFLops
 >
 > A real, session-isolated game — every visitor gets their own board.
 > Deployed on CPU. [Verified isolation + security claims](#security-verification).
+>
+> Or play it inside the Hugging Face Space:
+> **https://huggingface.co/spaces/Chris4K/connect-four-gf256**
+> (the Space is static and frames the live server; the server allows that
+> one origin explicitly — never a wildcard).
+
+![The game running against the GF(256) model](c4_001-006.gif)
+
+*A recorded game against the released checkpoint (`best_hard`, step 18,000).
+Gold is the human, blue is the model.*
 
 ---
 
@@ -159,6 +169,34 @@ process over public HTTPS** — not against a local server.
 ```bash
 python scripts/verify_public_isolation.py https://c4.tensorgarten.de
 # PASSED: 19   FAILED: 0
+```
+
+### Embedding (the Hugging Face Space)
+
+The Space at
+[`Chris4K/connect-four-gf256`](https://huggingface.co/spaces/Chris4K/connect-four-gf256)
+is **static** — it contains only a page that frames the live server. The
+server permits exactly one framing origin:
+
+```
+Content-Security-Policy: …; frame-ancestors https://chris4k-connect-four-gf256.static.hf.space
+```
+
+The allowlist is explicit and closed:
+
+- **Default is deny.** With no `--allow-embedding` flag the response carries
+  `X-Frame-Options: DENY` and `frame-ancestors 'none'`.
+- **Only `https://` origins are accepted.** An `http://` ancestor could be
+  intercepted; a `https://*` wildcard is refused outright, because it would
+  let any site clickjack the game.
+- **The allowlist replaces `X-Frame-Options`** when it is in force — XFO can
+  only allow or deny a single origin, while CSP can name several.
+
+Run it yourself:
+
+```bash
+python -m src.c4.ui_server --model model/best_hard.pt --public \
+    --allow-embedding https://chris4k-connect-four-gf256.static.hf.space
 ```
 
 It asserts, and all of these currently hold:
